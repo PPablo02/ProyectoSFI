@@ -2,417 +2,238 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import yfinance as yf
+import plotly.express as px
+import plotly.graph_objects as go
+from scipy.optimize import minimize
 from scipy.stats import skew, kurtosis
-from pypfopt.efficient_frontier import EfficientFrontier
-from pypfopt.risk_models import CovarianceShrinkage
-from pypfopt.expected_returns import mean_historical_return
-from pypfopt.black_litterman import BlackLittermanModel
-import matplotlib.pyplot as plt
-import seaborn as sns
 
-# Configuración de la app
-st.set_page_config(page_title="Portafolios Óptimos", layout="wide")
+# Configuración inicial de la página
+st.set_page_config(page_title="Gestión de Portafolios Óptimos",
+                   page_icon="📈",
+                   layout="wide")
 
-# Títulos
-st.title("Gestión de Portafolios y Asset Allocation")
-st.sidebar.title("Menú")
+# Título y descripción
+st.markdown("""
+# 📊 **Gestión de Portafolios y Optimización**
+Una herramienta interactiva para analizar activos, calcular métricas de riesgo y construir portafolios óptimos utilizando modelos avanzados como Black-Litterman.
+""")
+
+# 1. Selección de los 5 ETFs iniciales
+DEFAULT_ETFS = ["SPY", "EEM", "TLT", "HYG", "GLD"]
+tickers = st.sidebar.multiselect("Selecciona los 5 ETFs", options=DEFAULT_ETFS, default=DEFAULT_ETFS)
+
+# Variables globales
+data = {}
 
 # Funciones auxiliares
-def cargar_datos(tickers, start_date, end_date):
-    data = yf.download(tickers, start=start_date, end=end_date)["Adj Close"]
-    return data
-
-def calcular_estadisticas(data):
-    rendimientos = data.pct_change().dropna()
-    stats = {
-        "Media": rendimientos.mean(),
-        "Sesgo": rendimientos.apply(skew),
-        "Exceso de Curtosis": rendimientos.apply(kurtosis),
-        "VaR (95%)": rendimientos.quantile(0.05),
-        "CVaR (95%)": rendimientos[rendimientos < rendimientos.quantile(0.05)].mean(),
+def calcular_estadisticas(precios):
+    rendimientos = precios.pct_change().dropna()
+    media = rendimientos.mean()
+    volatilidad = rendimientos.std()
+    sesgo = skew(rendimientos)
+    curtosis = kurtosis(rendimientos, fisher=False)
+    VaR = rendimientos.quantile(0.05)
+    CVaR = rendimientos[rendimientos <= VaR].mean()
+    sharpe = media / volatilidad
+    sortino = media / rendimientos[rendimientos < 0].std()
+    drawdown = (precios / precios.cummax() - 1).min()
+    
+    return {
+        "Media (%)": media * 100,
+        "Volatilidad (%)": volatilidad * 100,
+        "Sesgo": sesgo,
+        "Curtosis": curtosis,
+        "VaR 5% (%)": VaR * 100,
+        "CVaR (%)": CVaR * 100,
+        "Sharpe Ratio": sharpe,
+        "Sortino": sortino,
+        "Drawdown": drawdown
     }
-    return pd.DataFrame(stats)
 
-def optimizar_portafolios(data, objetivo):
-    rendimientos = data.pct_change().dropna()
-    mu = mean_historical_return(rendimientos)
-    S = CovarianceShrinkage(rendimientos).ledoit_wolf()
-    ef = EfficientFrontier(mu, S)
-    if objetivo == "Mínima Volatilidad":
-        pesos = ef.min_volatility()
-    elif objetivo == "Máximo Sharpe Ratio":
-        pesos = ef.max_sharpe()
-    elif objetivo == "Rendimiento Objetivo":
-        ef.efficient_return(target_return=0.10)
-        pesos = ef.clean_weights()
-    return pesos, ef.portfolio_performance(verbose=True)
-
-# Paso 1: Selección de Activos
-st.sidebar.header("Paso 1: Selección de Activos")
-tickers = st.sidebar.text_input("Introduce los símbolos de 5 ETFs separados por comas:", value="SPY,EEM,TLT,GLD,LQD")
-
-# Paso 2: Cargar Datos
-if st.sidebar.button("Cargar Datos"):
-    start_date = "2010-01-01"
-    end_date = "2023-01-01"
-    tickers_list = [ticker.strip() for ticker in tickers.split(",")]
-    datos = cargar_datos(tickers_list, start_date, end_date)
-    st.write("### Previsualización de los datos cargados")
-    st.write(datos.head())
-
-    # Paso 3: Estadísticas
-    st.write("### Estadísticas de los Activos")
-    stats = calcular_estadisticas(datos)
-    st.dataframe(stats)
-
-    # Paso 4: Optimización de Portafolios
-    st.write("### Portafolios Óptimos")
-    objetivo = st.selectbox("Selecciona el objetivo de optimización:", ["Mínima Volatilidad", "Máximo Sharpe Ratio", "Rendimiento Objetivo"])
-    if st.button("Optimizar Portafolio"):
-        pesos, rendimiento = optimizar_portafolios(datos, objetivo)
-        st.write(f"Pesos óptimos para el portafolio ({objetivo}):")
-        st.json(pesos)
-        st.write("Rendimiento del portafolio:")
-        st.write(f"Retorno esperado: {rendimiento[0]:.2%}, Riesgo: {rendimiento[1]:.2%}, Sharpe Ratio: {rendimiento[2]:.2f}")
-
-    # Paso 5: Visualización
-    st.write("### Visualización de Datos")
-    st.line_chart(datos)
-
-# Función de backtesting
-def backtesting_portafolio(data, pesos, start_test, end_test):
-    rendimientos = data.pct_change().dropna()
-    portafolio_retorno = (rendimientos * pesos).sum(axis=1)
-    acumulado = (1 + portafolio_retorno).cumprod()
-    rendimientos_anuales = portafolio_retorno.resample('Y').sum()
-
-    # Filtrar datos de backtesting
-    rendimientos_backtest = portafolio_retorno[start_test:end_test]
-    acumulado_backtest = acumulado[start_test:end_test]
+def optimizar_portafolio(rendimientos, objetivo="min_vol", retorno_objetivo=0.1):
+    n_activos = rendimientos.shape[1]
+    pesos_iniciales = np.ones(n_activos) / n_activos
+    limites = [(0, 1) for _ in range(n_activos)]
+    restricciones = [{'type': 'eq', 'fun': lambda pesos: np.sum(pesos) - 1}]
     
-    # Métricas de backtesting
-    metrics = {
-        "Rendimiento anual promedio": rendimientos_backtest.mean() * 252,
-        "Volatilidad anual": rendimientos_backtest.std() * np.sqrt(252),
-        "Sharpe Ratio": (rendimientos_backtest.mean() * 252) / (rendimientos_backtest.std() * np.sqrt(252)),
-        "Máximo Drawdown": (acumulado_backtest / acumulado_backtest.cummax() - 1).min()
-    }
-    return metrics, acumulado_backtest
+    if objetivo == "min_vol":
+        resultado = minimize(lambda pesos: calcular_volatilidad_pesos(pesos, rendimientos),
+                             pesos_iniciales, method='SLSQP', bounds=limites, constraints=restricciones)
+    elif objetivo == "max_sharpe":
+        resultado = minimize(lambda pesos: -calcular_rendimiento_pesos(pesos, rendimientos) /
+                                        calcular_volatilidad_pesos(pesos, rendimientos),
+                             pesos_iniciales, method='SLSQP', bounds=limites, constraints=restricciones)
+    elif objetivo == "min_vol_target":
+        restricciones.append({'type': 'eq', 'fun': lambda pesos: calcular_rendimiento_pesos(pesos, rendimientos) - retorno_objetivo})
+        resultado = minimize(lambda pesos: calcular_volatilidad_pesos(pesos, rendimientos),
+                             pesos_iniciales, method='SLSQP', bounds=limites, constraints=restricciones)
+    else:
+        raise ValueError("Objetivo no reconocido.")
+    
+    return resultado.x
 
-# Paso 5: Backtesting
-if "datos" in locals() and "pesos" in locals():
-    st.write("### Backtesting de Portafolios")
-    start_test = "2021-01-01"
-    end_test = "2023-01-01"
-    metrics, acumulado_backtest = backtesting_portafolio(datos, pesos, start_test, end_test)
-    
-    # Mostrar métricas de backtesting
-    st.write("#### Métricas del Portafolio Optimizado")
-    st.json(metrics)
-    
-    # Comparativa contra el S&P500 y portafolio equitativo
-    st.write("#### Comparativa contra Benchmark")
-    datos_benchmark = cargar_datos(["SPY"], start_test, end_test)
-    rendimientos_benchmark = datos_benchmark.pct_change().dropna()
-    acumulado_benchmark = (1 + rendimientos_benchmark).cumprod()
+def calcular_rendimiento_pesos(pesos, rendimientos):
+    return np.sum(pesos * rendimientos.mean())
 
-    pesos_equitativos = np.ones(len(tickers_list)) / len(tickers_list)
-    _, acumulado_equitativo = backtesting_portafolio(datos, pesos_equitativos, start_test, end_test)
+def calcular_volatilidad_pesos(pesos, rendimientos):
+    cov_matrix = rendimientos.cov()
+    return np.sqrt(np.dot(pesos.T, np.dot(cov_matrix, pesos)))
 
-    # Gráfica comparativa
-    st.line_chart(pd.DataFrame({
-        "Portafolio Optimizado": acumulado_backtest,
-        "S&P 500": acumulado_benchmark["SPY"],
-        "Portafolio Equitativo": acumulado_equitativo
-    }))
+# Funciones del modelo Black-Litterman
+def calcular_prior(rendimientos, market_cap, tau):
+    # Asumimos un benchmark de asignación equitativa
+    w_mkt = np.ones(len(rendimientos.columns)) / len(rendimientos.columns)  # Pesos equitativos
+    cov = rendimientos.cov() * 252  # Matriz de covarianza anualizada
+    pi = tau * np.dot(cov, w_mkt)  # Rendimientos implícitos
+    return pi, cov
 
-# Paso 6: Visualización adicional
-st.write("### Visualización adicional")
-st.write("#### Heatmap de Correlaciones")
-correlaciones = datos.pct_change().corr()
-fig, ax = plt.subplots(figsize=(10, 8))
-sns.heatmap(correlaciones, annot=True, cmap="coolwarm", fmt=".2f", ax=ax)
-st.pyplot(fig)
+def integrar_views(pi, cov, views, tau, varianza_views):
+    P = []  # Matriz de views
+    Q = []  # Rendimientos esperados según views
+    omega = []  # Matriz de incertidumbre (diagonal)
 
-# Modelo de Black-Litterman
-# Función para obtener pesos del benchmark (basado en capitalización de mercado)
-def calcular_priori_benchmark(data, benchmark_ticker):
-    benchmark_data = cargar_datos([benchmark_ticker], "2010-01-01", "2023-01-01")
-    rendimientos_benchmark = benchmark_data.pct_change().dropna()
+    for view in views:
+        activo, valor = view
+        idx = tickers_list.index(activo)
+        P_row = np.zeros(len(tickers_list))
+        P_row[idx] = 1  # Asumimos views absolutas
+        P.append(P_row)
+        Q.append(float(valor) / 100)
+        omega.append(varianza_views)
     
-    # Pesos del benchmark proporcional a la correlación con el benchmark
-    rendimientos_activos = data.pct_change().dropna()
-    correlaciones = rendimientos_activos.corrwith(rendimientos_benchmark[benchmark_ticker])
-    pesos_benchmark = correlaciones / correlaciones.sum()  # Normalizar a 100%
-    return pesos_benchmark
+    P = np.array(P)
+    Q = np.array(Q)
+    omega = np.diag(omega)
 
-# Paso 7: Modelo de Black-Litterman con pesos del benchmark
-if "datos" in locals():
-    st.write("### Modelo de Black-Litterman con Benchmark")
-    
-    # Selección del benchmark
-    benchmark_ticker = st.text_input("Introduce el símbolo del índice de referencia (ejemplo: SPY para S&P 500):", value="SPY")
-    
-    if st.button("Calcular Pesos del Benchmark"):
-        try:
-            # Calcular pesos del benchmark
-            pesos_benchmark = calcular_priori_benchmark(datos, benchmark_ticker)
-            st.write("Pesos iniciales basados en el benchmark:")
-            st.json(pesos_benchmark.to_dict())
-            
-            # Distribución a priori basada en el benchmark
-            mu, S, _ = calcular_priori(datos, tickers_list)
-            st.write("Rendimientos esperados a priori:", mu)
-            
-            # Entrada de Views
-            st.write("#### Perspectivas del Usuario (Views)")
-            st.write("Ingresa tus perspectivas sobre los rendimientos esperados de los ETFs seleccionados.")
-            views = {}
-            for ticker in tickers_list:
-                views[ticker] = st.number_input(f"Rendimiento esperado para {ticker} (%):", value=0.0, step=0.1) / 100
-            
-            # Entrada de qué tanta confianza (confidencias) tienes
-            st.write("#### Confianza en las Perspectivas")
-            st.write("Especifica tu confianza en cada perspectiva (valores bajos indican alta incertidumbre).")
-            confidencias = []
-            for ticker in tickers_list:
-                omega = st.number_input(f"Confianza para {ticker}:", value=0.1, step=0.1)
-                confidencias.append(omega)
-            
-            # Calcular pesos óptimos con Black-Litterman
-            if st.button("Calcular Portafolio Óptimo con Black-Litterman"):
-                pesos_bl, rendimiento_bl, riesgo_bl, sharpe_bl = aplicar_black_litterman(mu, S, pesos_benchmark, views, confidencias)
-                
-                # Mostrar resultados
-                st.write("#### Pesos Óptimos con Black-Litterman")
-                st.json(pesos_bl)
-                st.write(f"Rendimiento esperado: {rendimiento_bl:.2%}")
-                st.write(f"Riesgo esperado: {riesgo_bl:.2%}")
-                st.write(f"Sharpe Ratio: {sharpe_bl:.2f}")
-        
-        except Exception as e:
-            st.error(f"Error al calcular pesos del benchmark: {e}")
-
-# Validación de datos del benchmark
-def validar_datos_benchmark(data, benchmark_data):
-    if data.index.equals(benchmark_data.index):
-        return True
-    # Alinear fechas si no coinciden
-    benchmark_data = benchmark_data.reindex(data.index, method="ffill").dropna()
-    return not benchmark_data.empty, benchmark_data
-
-# Visualización de los pesos
-def graficar_pesos(pesos_iniciales, pesos_ajustados, labels):
-    fig, ax = plt.subplots(figsize=(10, 6))
-    bar_width = 0.35
-    index = np.arange(len(labels))
-    
-    ax.bar(index, pesos_iniciales, bar_width, label="Pesos Iniciales (Benchmark)", alpha=0.7)
-    ax.bar(index + bar_width, pesos_ajustados, bar_width, label="Pesos Ajustados (Black-Litterman)", alpha=0.7)
-    
-    ax.set_xlabel("Activos")
-    ax.set_ylabel("Pesos")
-    ax.set_title("Comparativa de Pesos del Portafolio")
-    ax.set_xticks(index + bar_width / 2)
-    ax.set_xticklabels(labels)
-    ax.legend()
-    
-    return fig
-
-# Incorporar fallback a pesos equitativos
-if "datos" in locals():
-    st.write("### Modelo de Black-Litterman Mejorado")
-    
-    # Selección del benchmark
-    benchmark_ticker = st.text_input("Introduce el símbolo del índice de referencia (ejemplo: SPY para S&P 500):", value="SPY")
-    
-    if st.button("Calcular Pesos del Benchmark"):
-        try:
-            # Descargar y validar datos del benchmark
-            benchmark_data = cargar_datos([benchmark_ticker], "2010-01-01", "2023-01-01")
-            valido, benchmark_data = validar_datos_benchmark(datos, benchmark_data)
-            
-            if not valido:
-                st.warning("No se pudieron validar los datos del benchmark. Usando pesos equitativos.")
-                pesos_benchmark = np.ones(len(tickers_list)) / len(tickers_list)
-            else:
-                # Calcular pesos del benchmark
-                pesos_benchmark = calcular_priori_benchmark(datos, benchmark_ticker)
-            
-            st.write("Pesos iniciales calculados:")
-            st.json(pesos_benchmark.to_dict())
-            
-            # Distribución a priori basada en el benchmark o equitativos
-            mu, S, _ = calcular_priori(datos, tickers_list)
-            
-            # Entrada de Views
-            st.write("#### Perspectivas del Usuario (Views)")
-            st.write("Ingresa tus perspectivas sobre los rendimientos esperados de los ETFs seleccionados.")
-            views = {}
-            for ticker in tickers_list:
-                views[ticker] = st.number_input(f"Rendimiento esperado para {ticker} (%):", value=0.0, step=0.1) / 100
-            
-            # Entrada de Confidencias
-            st.write("#### Confianza en las Perspectivas")
-            confidencias = []
-            for ticker in tickers_list:
-                omega = st.number_input(f"Confianza para {ticker}:", value=0.1, step=0.1)
-                confidencias.append(omega)
-            
-            # Calcular pesos óptimos con Black-Litterman
-            if st.button("Calcular Portafolio Óptimo con Black-Litterman"):
-                pesos_bl, rendimiento_bl, riesgo_bl, sharpe_bl = aplicar_black_litterman(mu, S, pesos_benchmark, views, confidencias)
-                
-                # Mostrar resultados
-                st.write("#### Pesos Óptimos con Black-Litterman")
-                st.json(pesos_bl)
-                st.write(f"Rendimiento esperado: {rendimiento_bl:.2%}")
-                st.write(f"Riesgo esperado: {riesgo_bl:.2%}")
-                st.write(f"Sharpe Ratio: {sharpe_bl:.2f}")
-                
-                # Visualización comparativa
-                st.write("#### Comparación de Pesos")
-                labels = tickers_list
-                fig = graficar_pesos(list(pesos_benchmark.values()), list(pesos_bl.values()), labels)
-                st.pyplot(fig)
-        
-        except Exception as e:
-            st.error(f"Error al calcular pesos del benchmark: {e}")
-
-# Función para calcular rendimiento acumulado y métricas
-def calcular_rendimiento_acumulado(data, pesos, start_date, end_date):
-    rendimientos = data.pct_change().dropna()
-    portafolio_retorno = (rendimientos * pesos).sum(axis=1)
-    acumulado = (1 + portafolio_retorno).cumprod()
-    acumulado = acumulado[start_date:end_date]
-    return acumulado
-
-# Función para graficar comparativas de rendimiento
-def graficar_comparativa_rendimiento(rendimientos_dict):
-    fig, ax = plt.subplots(figsize=(12, 6))
-    for label, rend in rendimientos_dict.items():
-        ax.plot(rend, label=label)
-    ax.set_title("Comparativa de Rendimientos Acumulados")
-    ax.set_xlabel("Fecha")
-    ax.set_ylabel("Rendimiento Acumulado")
-    ax.legend()
-    ax.grid(True)
-    return fig
-
-if "datos" in locals() and "pesos_bl" in locals():
-    st.write("### Comparativa de Rendimientos entre Portafolios")
-    
-    # Fechas de backtesting
-    start_test = "2021-01-01"
-    end_test = "2023-01-01"
-    
-    # Calcular rendimientos acumulados
-    st.write("#### Calculando rendimientos acumulados...")
-    try:
-        # Portafolio ajustado (Black-Litterman)
-        acumulado_bl = calcular_rendimiento_acumulado(datos, list(pesos_bl.values()), start_test, end_test)
-        
-        # Portafolio inicial (Benchmark)
-        acumulado_benchmark = calcular_rendimiento_acumulado(datos, list(pesos_benchmark.values()), start_test, end_test)
-        
-        # Benchmark adicional (S&P 500)
-        sp500_data = cargar_datos(["SPY"], start_test, end_test)
-        rendimientos_sp500 = sp500_data.pct_change().dropna()
-        acumulado_sp500 = (1 + rendimientos_sp500["SPY"]).cumprod()
-        
-        # Graficar comparativa
-        rendimientos_dict = {
-            "Portafolio Ajustado (Black-Litterman)": acumulado_bl,
-            "Portafolio Inicial (Benchmark)": acumulado_benchmark,
-            "S&P 500": acumulado_sp500
-        }
-        fig = graficar_comparativa_rendimiento(rendimientos_dict)
-        st.pyplot(fig)
-        
-        # Métricas de comparación
-        st.write("#### Métricas Clave")
-        for nombre, rend in rendimientos_dict.items():
-            rendimiento_anual = rend.pct_change().mean() * 252
-            volatilidad_anual = rend.pct_change().std() * np.sqrt(252)
-            sharpe_ratio = rendimiento_anual / volatilidad_anual
-            st.write(f"**{nombre}:**")
-            st.write(f"- Rendimiento anual promedio: {rendimiento_anual:.2%}")
-            st.write(f"- Volatilidad anual: {volatilidad_anual:.2%}")
-            st.write(f"- Sharpe Ratio: {sharpe_ratio:.2f}")
-            st.write("---")
-    
-    except Exception as e:
-        st.error(f"Error al calcular comparativa de rendimientos: {e}")
-
-import plotly.graph_objects as go
-
-# Función para graficar comparativa de rendimiento con Plotly
-def graficar_comparativa_rendimiento_plotly(rendimientos_dict):
-    fig = go.Figure()
-    
-    # Añadir líneas para cada portafolio
-    for label, rend in rendimientos_dict.items():
-        fig.add_trace(go.Scatter(x=rend.index, y=rend, mode='lines', name=label))
-    
-    # Personalizar la gráfica
-    fig.update_layout(
-        title="Comparativa de Rendimientos Acumulados",
-        xaxis_title="Fecha",
-        yaxis_title="Rendimiento Acumulado",
-        template="plotly_dark",
-        hovermode="closest",
-        xaxis_rangeslider_visible=True
+    # Black-Litterman posterior
+    inv_cov = np.linalg.inv(tau * cov)
+    inv_omega = np.linalg.inv(omega)
+    posterior_mean = np.linalg.inv(inv_cov + np.dot(P.T, np.dot(inv_omega, P))).dot(
+        inv_cov.dot(pi) + np.dot(P.T, np.dot(inv_omega, Q))
     )
-    
-    return fig
+    posterior_cov = np.linalg.inv(inv_cov + np.dot(P.T, np.dot(inv_omega, P)))
 
-if "datos" in locals() and "pesos_bl" in locals():
-    st.write("### Comparativa Interactiva de Rendimientos entre Portafolios")
-    
-    # Fechas de backtesting
-    start_test = "2021-01-01"
-    end_test = "2023-01-01"
-    
-    # Calcular rendimientos acumulados
-    st.write("#### Calculando rendimientos acumulados...")
-    try:
-        # Portafolio ajustado (Black-Litterman)
-        acumulado_bl = calcular_rendimiento_acumulado(datos, list(pesos_bl.values()), start_test, end_test)
-        
-        # Portafolio inicial (Benchmark)
-        acumulado_benchmark = calcular_rendimiento_acumulado(datos, list(pesos_benchmark.values()), start_test, end_test)
-        
-        # Benchmark adicional (S&P 500)
-        sp500_data = cargar_datos(["SPY"], start_test, end_test)
-        rendimientos_sp500 = sp500_data.pct_change().dropna()
-        acumulado_sp500 = (1 + rendimientos_sp500["SPY"]).cumprod()
-        
-        # Graficar comparativa interactiva
-        rendimientos_dict = {
-            "Portafolio Ajustado (Black-Litterman)": acumulado_bl,
-            "Portafolio Inicial (Benchmark)": acumulado_benchmark,
-            "S&P 500": acumulado_sp500
+    return posterior_mean, posterior_cov
+
+def calcular_pesos_optimos(mean_returns, cov):
+    inv_cov = np.linalg.inv(cov)
+    pesos = np.dot(inv_cov, mean_returns) / np.sum(np.dot(inv_cov, mean_returns))
+    return pesos
+
+# 1. Selección de los 5 ETFs
+with st.sidebar:
+    st.header("Selección de ETFs")
+    tickers_list = tickers  # Usar los ETFs seleccionados por el usuario
+    fecha_inicio = st.date_input("Fecha de inicio", value=pd.to_datetime("2010-01-01"))
+    fecha_fin = st.date_input("Fecha de fin", value=pd.to_datetime("today").date())
+
+    if st.button("Cargar datos"):
+        data = {ticker: yf.download(ticker, start=fecha_inicio, end=fecha_fin)['Adj Close'] for ticker in tickers_list}
+        st.success("Datos cargados exitosamente.")
+        st.dataframe(pd.DataFrame(data))
+
+# 2. Definir los Views del Modelo Black-Litterman
+views = [
+    {"activo": "LQD", "rendimiento_esperado": 0.03},  # 3% para LQD
+    {"activo": "LEMB", "rendimiento_esperado": 0.06},  # 6% para LEMB
+    {"activo": "VTI", "rendimiento_esperado": 0.07},   # 7% para VTI
+    {"activo": "EEM", "rendimiento_esperado": 0.09},   # 9% para EEM
+    {"activo": "GLD", "rendimiento_esperado": 0.05},   # 5% para GLD
+]
+
+# 3. Pestaña: Análisis de Activos
+with st.tabs("📈 Análisis de Activos")[0]:
+    st.header("📈 Análisis de Activos")
+    if data:
+        for ticker in tickers_list:
+            st.subheader(f"Análisis de {ticker}")
+            fig = px.line(data[ticker], title=f"Serie de Tiempo - {ticker}")
+            st.plotly_chart(fig)
+
+# 4. Pestaña: Optimización Black-Litterman
+with st.tabs("🧠 Black-Litterman")[0]:
+    st.header("🧠 Modelo Black-Litterman")
+    if data:
+        tau = st.slider("Tau (confianza en el mercado)", 0.01, 1.0, 0.05)
+        varianza_views = st.slider("Varianza de los views (incertidumbre)", 0.01, 1.0, 0.25)
+
+        # Aplicar el Modelo Black-Litterman
+        pi, cov = calcular_prior(data, market_cap=10000, tau=tau)
+        posterior_mean, posterior_cov = integrar_views(pi, cov, views, tau, varianza_views)
+        pesos_optimos = calcular_pesos_optimos(posterior_mean, posterior_cov)
+
+        st.write("Pesos ajustados Black-Litterman:", pesos_optimos)
+
+# 5. Pestaña: Comparación de Resultados
+with st.tabs("📊 Visualización de Resultados")[0]:
+    st.header("📊 Visualización de Resultados")
+    if data:
+        # 1. Comparación de Rendimientos de ETFs vs Benchmark
+        rendimiento_etfs = {
+            'Portafolio Black-Litterman': rendimiento_portafolio,
+            'Benchmark (Asignación Equitativa)': rendimiento_benchmark,
         }
-        fig = graficar_comparativa_rendimiento_plotly(rendimientos_dict)
-        st.plotly_chart(fig)
         
-        # Métricas de comparación
-        st.write("#### Métricas Clave")
-        for nombre, rend in rendimientos_dict.items():
-            rendimiento_anual = rend.pct_change().mean() * 252
-            volatilidad_anual = rend.pct_change().std() * np.sqrt(252)
-            sharpe_ratio = rendimiento_anual / volatilidad_anual
-            st.write(f"**{nombre}:**")
-            st.write(f"- Rendimiento anual promedio: {rendimiento_anual:.2%}")
-            st.write(f"- Volatilidad anual: {volatilidad_anual:.2%}")
-            st.write(f"- Sharpe Ratio: {sharpe_ratio:.2f}")
-            st.write("---")
-    
-    except Exception as e:
-        st.error(f"Error al calcular comparativa de rendimientos: {e}")
+        for ticker in tickers_list:
+            rendimiento_etfs[ticker] = calcular_rendimiento_acumulado(np.ones(len(tickers_list)) / len(tickers_list), rendimientos)
 
+        # Gráfico de barras de comparación de rendimientos
+        fig_comparacion = px.bar(
+            x=list(rendimiento_etfs.keys()),
+            y=list(rendimiento_etfs.values()),
+            labels={'x': 'Portafolios y ETFs', 'y': 'Rendimiento Acumulado (%)'},
+            title="Comparación del Rendimiento: Portafolio vs Benchmark vs ETFs"
+        )
 
+        fig_comparacion.update_layout(template="plotly_dark", showlegend=False)
+        st.plotly_chart(fig_comparacion)
 
+        # 2. Matriz de Correlación entre los Rendimientos
+        correlacion = rendimientos.corr()  # Matriz de correlación
+        fig_correlacion = go.Figure(data=go.Heatmap(
+            z=correlacion.values,
+            x=tickers_list,
+            y=tickers_list,
+            colorscale='Viridis',
+            colorbar=dict(title="Correlación")
+        ))
+
+        fig_correlacion.update_layout(title="Matriz de Correlación entre los Rendimientos de los ETFs")
+        st.plotly_chart(fig_correlacion)
+
+        # 3. Histograma de Rendimientos Diarios para cada ETF
+        for ticker in tickers_list:
+            rend = data[ticker].pct_change().dropna()
+            fig_hist = px.histogram(rend, nbins=30, title=f"Distribución de Rendimientos Diarios - {ticker}", 
+                                    labels={'value': 'Rendimiento Diario'}, template="plotly_dark")
+            fig_hist.update_layout(showlegend=False)
+            st.plotly_chart(fig_hist)
+
+        # 4. Gráfico de la "Efficient Frontier"
+        # Calculamos los rendimientos y la volatilidad de diferentes combinaciones de portafolios
+        num_portafolios = 1000
+        resultados = np.zeros((3, num_portafolios))
+        for i in range(num_portafolios):
+            pesos = np.random.random(len(tickers_list))
+            pesos /= np.sum(pesos)
+            resultados[0, i] = calcular_rendimiento_pesos(pesos, rendimientos)
+            resultados[1, i] = calcular_volatilidad_pesos(pesos, rendimientos)
+            resultados[2, i] = resultados[0, i] / resultados[1, i]  # Sharpe Ratio
+
+        # Graficamos la frontera eficiente
+        fig_efficient_frontier = go.Figure()
+        fig_efficient_frontier.add_trace(go.Scatter(x=resultados[1], y=resultados[0], mode='markers', 
+                                                   marker=dict(color=resultados[2], colorscale='Viridis', size=8, opacity=0.7),
+                                                   name='Portafolios Aleatorios'))
+        fig_efficient_frontier.update_layout(title="Frontera Eficiente", 
+                                             xaxis_title="Volatilidad (Riesgo)", 
+                                             yaxis_title="Rendimiento Esperado")
+        st.plotly_chart(fig_efficient_frontier)
+
+        # 5. Visualización de los Pesos del Portafolio Black-Litterman
+        fig_pesos = px.pie(names=tickers_list, values=pesos_optimos, title="Distribución de Pesos del Portafolio Black-Litterman")
+        fig_pesos.update_layout(template="plotly_dark")
+        st.plotly_chart(fig_pesos)
 
 
 
