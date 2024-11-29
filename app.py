@@ -128,11 +128,15 @@ with st.sidebar:
     fecha_fin = st.date_input("Fecha de fin", value=pd.to_datetime("today").date())
 
     if st.button("Cargar datos"):
-        # Verificar que se obtienen datos válidos antes de mostrarlos
-        data = {ticker: yf.download(ticker, start=fecha_inicio, end=fecha_fin)['Adj Close'] for ticker in tickers_list}
+        # Descargar datos de los ETFs
+        data = {}
+        for ticker in tickers_list:
+            df = yf.download(ticker, start=fecha_inicio, end=fecha_fin)['Adj Close']
+            if not df.empty:  # Solo agregar el ticker si tiene datos válidos
+                data[ticker] = df
         
-        # Verificar si data contiene datos
-        if all(df.empty for df in data.values()):
+        # Verificar si data contiene datos válidos
+        if not data:
             st.error("No se pudo obtener datos para los ETFs seleccionados.")
         else:
             st.success("Datos cargados exitosamente.")
@@ -152,9 +156,10 @@ with st.tabs("📈 Análisis de Activos")[0]:
     st.header("📈 Análisis de Activos")
     if data:
         for ticker in tickers_list:
-            st.subheader(f"Análisis de {ticker}")
-            fig = px.line(data[ticker], title=f"Serie de Tiempo - {ticker}")
-            st.plotly_chart(fig)
+            if ticker in data:  # Solo mostrar los tickers que tienen datos
+                st.subheader(f"Análisis de {ticker}")
+                fig = px.line(data[ticker], title=f"Serie de Tiempo - {ticker}")
+                st.plotly_chart(fig)
 
 # 4. Pestaña: Optimización Black-Litterman
 with st.tabs("🧠 Black-Litterman")[0]:
@@ -181,7 +186,8 @@ with st.tabs("📊 Visualización de Resultados")[0]:
         }
         
         for ticker in tickers_list:
-            rendimiento_etfs[ticker] = calcular_rendimiento_acumulado(np.ones(len(tickers_list)) / len(tickers_list), rendimientos)
+            if ticker in data:  # Solo mostrar los tickers que tienen datos
+                rendimiento_etfs[ticker] = calcular_rendimiento_acumulado(np.ones(len(tickers_list)) / len(tickers_list), rendimientos)
 
         # Gráfico de barras de comparación de rendimientos
         fig_comparacion = px.bar(
@@ -193,5 +199,4 @@ with st.tabs("📊 Visualización de Resultados")[0]:
 
         fig_comparacion.update_layout(template="plotly_dark", showlegend=False)
         st.plotly_chart(fig_comparacion)
-
 
