@@ -128,9 +128,15 @@ with st.sidebar:
     fecha_fin = st.date_input("Fecha de fin", value=pd.to_datetime("today").date())
 
     if st.button("Cargar datos"):
+        # Verificar que se obtienen datos válidos antes de mostrarlos
         data = {ticker: yf.download(ticker, start=fecha_inicio, end=fecha_fin)['Adj Close'] for ticker in tickers_list}
-        st.success("Datos cargados exitosamente.")
-        st.dataframe(pd.DataFrame(data))
+        
+        # Verificar si data contiene datos
+        if all(df.empty for df in data.values()):
+            st.error("No se pudo obtener datos para los ETFs seleccionados.")
+        else:
+            st.success("Datos cargados exitosamente.")
+            st.dataframe(pd.DataFrame(data))  # Mostrar los datos cargados
 
 # 2. Definir los Views del Modelo Black-Litterman
 views = [
@@ -187,55 +193,5 @@ with st.tabs("📊 Visualización de Resultados")[0]:
 
         fig_comparacion.update_layout(template="plotly_dark", showlegend=False)
         st.plotly_chart(fig_comparacion)
-
-        # 2. Matriz de Correlación entre los Rendimientos
-        correlacion = rendimientos.corr()  # Matriz de correlación
-        fig_correlacion = go.Figure(data=go.Heatmap(
-            z=correlacion.values,
-            x=tickers_list,
-            y=tickers_list,
-            colorscale='Viridis',
-            colorbar=dict(title="Correlación")
-        ))
-
-        fig_correlacion.update_layout(title="Matriz de Correlación entre los Rendimientos de los ETFs")
-        st.plotly_chart(fig_correlacion)
-
-        # 3. Histograma de Rendimientos Diarios para cada ETF
-        for ticker in tickers_list:
-            rend = data[ticker].pct_change().dropna()
-            fig_hist = px.histogram(rend, nbins=30, title=f"Distribución de Rendimientos Diarios - {ticker}", 
-                                    labels={'value': 'Rendimiento Diario'}, template="plotly_dark")
-            fig_hist.update_layout(showlegend=False)
-            st.plotly_chart(fig_hist)
-
-        # 4. Gráfico de la "Efficient Frontier"
-        # Calculamos los rendimientos y la volatilidad de diferentes combinaciones de portafolios
-        num_portafolios = 1000
-        resultados = np.zeros((3, num_portafolios))
-        for i in range(num_portafolios):
-            pesos = np.random.random(len(tickers_list))
-            pesos /= np.sum(pesos)
-            resultados[0, i] = calcular_rendimiento_pesos(pesos, rendimientos)
-            resultados[1, i] = calcular_volatilidad_pesos(pesos, rendimientos)
-            resultados[2, i] = resultados[0, i] / resultados[1, i]  # Sharpe Ratio
-
-        # Graficamos la frontera eficiente
-        fig_efficient_frontier = go.Figure()
-        fig_efficient_frontier.add_trace(go.Scatter(x=resultados[1], y=resultados[0], mode='markers', 
-                                                   marker=dict(color=resultados[2], colorscale='Viridis', size=8, opacity=0.7),
-                                                   name='Portafolios Aleatorios'))
-        fig_efficient_frontier.update_layout(title="Frontera Eficiente", 
-                                             xaxis_title="Volatilidad (Riesgo)", 
-                                             yaxis_title="Rendimiento Esperado")
-        st.plotly_chart(fig_efficient_frontier)
-
-        # 5. Visualización de los Pesos del Portafolio Black-Litterman
-        fig_pesos = px.pie(names=tickers_list, values=pesos_optimos, title="Distribución de Pesos del Portafolio Black-Litterman")
-        fig_pesos.update_layout(template="plotly_dark")
-        st.plotly_chart(fig_pesos)
-
-
-
 
 
