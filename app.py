@@ -140,7 +140,9 @@ with st.sidebar:
             st.error("No se pudo obtener datos para los ETFs seleccionados.")
         else:
             st.success("Datos cargados exitosamente.")
-            st.dataframe(pd.DataFrame(data))  # Mostrar los datos cargados
+            # Verificar si data tiene datos válidos y mostrarlos
+            if data:
+                st.dataframe(pd.DataFrame(data))  # Mostrar los datos cargados si están disponibles
 
 # 2. Definir los Views del Modelo Black-Litterman
 views = [
@@ -199,4 +201,3 @@ with st.tabs("📊 Visualización de Resultados")[0]:
 
         fig_comparacion.update_layout(template="plotly_dark", showlegend=False)
         st.plotly_chart(fig_comparacion)
-
