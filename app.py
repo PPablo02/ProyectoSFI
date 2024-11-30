@@ -79,7 +79,7 @@ with tabs[1]:
                 "índice": "S&P 500", 
                 "moneda": "USD", 
                 "métricas_riesgo": {"Duración": "N/A", "Beta": 1.00, "Volatilidad": 14.2, "Drawdown Máximo": 18.5}, 
-                "principales_contribuidores": ["Apple", "Microsoft", "Tesla"], 
+                "principales_contribuidores": ["Apple", "Microsoft", "Nvidia"], 
                 "países_invertidos": "Estados Unidos",
                 "estilo": "Large Cap, Growth", 
                 "grado_inversión": "Alto", 
