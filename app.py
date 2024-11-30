@@ -48,67 +48,72 @@ with tabs[1]:
         returns = data.pct_change().dropna()
         return data, returns
 
-    # Lista de ETFs seleccionados
+    # Lista de ETFs seleccionados con atributos en español
     etfs = {
-        "LQD": {"name": "iShares iBoxx $ Investment Grade Corporate Bond ETF", 
-                "type": "Renta Fija Desarrollada", 
-                "index": "iBoxx $ Liquid Investment Grade Index", 
-                "currency": "USD", 
-                "risk_metrics": {"Duration": 6.8, "Beta": 0.12}, 
-                "contributors": ["Apple", "Microsoft", "Amazon"], 
-                "style": "Investment Grade", 
-                "cost": 0.14},
-        "VWOB": {"name": "Vanguard Emerging Markets Government Bond ETF", 
-                 "type": "Renta Fija Emergente", 
-                 "index": "Bloomberg Barclays EM USD Govt 10-30 Year Bond Index", 
-                 "currency": "USD", 
-                 "risk_metrics": {"Duration": 8.4, "Beta": 0.75}, 
-                 "contributors": ["Brazil", "Russia", "India"], 
-                 "style": "Emerging Market", 
-                 "cost": 0.36},
-        "SPY": {"name": "SPDR S&P 500 ETF Trust", 
-                "type": "Renta Variable Desarrollada", 
-                "index": "S&P 500", 
-                "currency": "USD", 
-                "risk_metrics": {"Duration": "N/A", "Beta": 1.00}, 
-                "contributors": ["Apple", "Microsoft", "Tesla"], 
-                "style": "Large Cap, Growth", 
-                "cost": 0.09},
-        "EEM": {"name": "iShares MSCI Emerging Markets ETF", 
-                "type": "Renta Variable Emergente", 
-                "index": "MSCI Emerging Markets Index", 
-                "currency": "USD", 
-                "risk_metrics": {"Duration": "N/A", "Beta": 1.12}, 
-                "contributors": ["China", "Taiwan", "India"], 
-                "style": "Emerging Market", 
-                "cost": 0.68},
-        "DBC": {"name": "Invesco DB Commodity Index Tracking Fund", 
-                "type": "Materias Primas", 
-                "index": "DBIQ Optimum Yield Diversified Commodity Index", 
-                "currency": "USD", 
-                "risk_metrics": {"Duration": "N/A", "Beta": 0.80}, 
-                "contributors": ["Crude Oil", "Gold", "Copper"], 
-                "style": "Commodity", 
-                "cost": 0.89}
+        "LQD": {"nombre": "iShares iBoxx $ Investment Grade Corporate Bond ETF", 
+                "tipo": "Renta Fija Desarrollada", 
+                "índice": "iBoxx $ Liquid Investment Grade Index", 
+                "moneda": "USD", 
+                "métricas_riesgo": {"Duración": 6.8, "Beta": 0.12}, 
+                "principales_contribuidores": ["Apple", "Microsoft", "Amazon"], 
+                "estilo": "Investment Grade", 
+                "costo": 0.14,
+                "url": "https://www.blackrock.com/us/products/239726/"},
+        "VWOB": {"nombre": "Vanguard Emerging Markets Government Bond ETF", 
+                 "tipo": "Renta Fija Emergente", 
+                 "índice": "Bloomberg Barclays EM USD Govt 10-30 Year Bond Index", 
+                 "moneda": "USD", 
+                 "métricas_riesgo": {"Duración": 8.4, "Beta": 0.75}, 
+                 "principales_contribuidores": ["Brasil", "Rusia", "India"], 
+                 "estilo": "Mercados Emergentes", 
+                 "costo": 0.36,
+                 "url": "https://investor.vanguard.com/etf/profile/VWOB"},
+        "SPY": {"nombre": "SPDR S&P 500 ETF Trust", 
+                "tipo": "Renta Variable Desarrollada", 
+                "índice": "S&P 500", 
+                "moneda": "USD", 
+                "métricas_riesgo": {"Duración": "N/A", "Beta": 1.00}, 
+                "principales_contribuidores": ["Apple", "Microsoft", "Tesla"], 
+                "estilo": "Large Cap, Growth", 
+                "costo": 0.09,
+                "url": "https://www.ssga.com/us/en/individual/etfs/fund-spdr-sp-500-etf-trust-spy"},
+        "EEM": {"nombre": "iShares MSCI Emerging Markets ETF", 
+                "tipo": "Renta Variable Emergente", 
+                "índice": "MSCI Emerging Markets Index", 
+                "moneda": "USD", 
+                "métricas_riesgo": {"Duración": "N/A", "Beta": 1.12}, 
+                "principales_contribuidores": ["China", "Taiwán", "India"], 
+                "estilo": "Mercados Emergentes", 
+                "costo": 0.68,
+                "url": "https://www.ishares.com/us/products/etf-investments#!type=ishares&style=ishares&view=keyFacts&fund=EEM"},
+        "DBC": {"nombre": "Invesco DB Commodity Index Tracking Fund", 
+                "tipo": "Materias Primas", 
+                "índice": "DBIQ Optimum Yield Diversified Commodity Index", 
+                "moneda": "USD", 
+                "métricas_riesgo": {"Duración": "N/A", "Beta": 0.80}, 
+                "principales_contribuidores": ["Petróleo Crudo", "Oro", "Cobre"], 
+                "estilo": "Comodities", 
+                "costo": 0.89,
+                "url": "https://www.invesco.com/portal/site/us/etfs/dbc"}
     }
 
     # Mostrar las características de cada ETF
-    for etf, details in etfs.items():
-        st.subheader(f"{details['name']} ({etf})")
-        st.write(f"**Tipo**: {details['type']}")
-        st.write(f"**Índice que sigue**: {details['index']}")
-        st.write(f"**Moneda de denominación**: {details['currency']}")
-        st.write(f"**Principales contribuyentes**: {', '.join(details['contributors'])}")
-        st.write(f"**Riesgo**: Duración = {details['risk_metrics']['Duration']} años, Beta = {details['risk_metrics']['Beta']}")
-        st.write(f"**Estilo**: {details['style']}")
-        st.write(f"**Costo de gestión anual**: {details['cost']}%")
+    for etf, detalles in etfs.items():
+        st.subheader(f"{detalles['nombre']} ({etf})")
+        st.write(f"**Tipo**: {detalles['tipo']}")
+        st.write(f"**Índice que sigue**: {detalles['índice']}")
+        st.write(f"**Moneda de denominación**: {detalles['moneda']}")
+        st.write(f"**Principales contribuyentes**: {', '.join(detalles['principales_contribuidores'])}")
+        st.write(f"**Riesgo**: Duración = {detalles['métricas_riesgo']['Duración']} años, Beta = {detalles['métricas_riesgo']['Beta']}")
+        st.write(f"**Estilo**: {detalles['estilo']}")
+        st.write(f"**Costo de gestión anual**: {detalles['costo']}%")
         
         # Cargar los datos del ETF
         data, returns = ventana1([etf], start_date="2010-01-01")
         
         # Último precio de cierre
-        last_close_price = data.iloc[-1][etf]
-        st.write(f"**Último precio de cierre de {etf}**: ${last_close_price:.2f}")
+        ultimo_precio_cierre = data.iloc[-1][etf]
+        st.write(f"**Último precio de cierre de {etf}**: ${ultimo_precio_cierre:.2f}")
         
         # Crear gráfico interactivo de la serie de tiempo del ETF
         fig = go.Figure()
@@ -116,7 +121,7 @@ with tabs[1]:
         
         # Configuración del gráfico
         fig.update_layout(
-            title=f"Serie de Tiempo del ETF: {details['name']}",
+            title=f"Serie de Tiempo del ETF: {detalles['nombre']}",
             xaxis_title='Fecha',
             yaxis_title='Precio Ajustado de Cierre',
             template='plotly_dark'
@@ -125,6 +130,8 @@ with tabs[1]:
         # Mostrar gráfico interactivo
         st.plotly_chart(fig)
         
+        # Enlace para más detalles del ETF
+        st.markdown(f"[Más detalles sobre este ETF]({detalles['url']})")        
 # --- Estadísticas de Activos ---
 with tabs[2]:
     st.header("Estadísticas de Activos")
