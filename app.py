@@ -259,15 +259,16 @@ with tabs[2]:
         # Redondear valores a 4 decimales
         resultados.loc[etf] = [round(value, 4) if not isinstance(value, str) else value for value in metrics]
 
-    # Convertir columnas que son porcentajes al formato de porcentaje
-    resultados[["VaR (95%)", "VaR (97.5%)", "VaR (99%)",
-                "CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)",
-                "Drawdown Máximo", "Watermark Máximo", "Punto más Bajo del Drawdown"]] = \
+        # Convertir columnas que son porcentajes al formato de porcentaje
         resultados[["VaR (95%)", "VaR (97.5%)", "VaR (99%)",
                     "CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)",
-                    "Drawdown Máximo", "Watermark Máximo", "Punto más Bajo del Drawdown"]].applymap(
-            lambda x: f"{x * 100:.4f}%" if pd.notnull(x) else x
-        )
+                    "Drawdown Máximo", "Watermark Máximo", "Punto más Bajo del Drawdown"]] = \
+        resultados[["VaR (95%)", "VaR (97.5%)", "VaR (99%)",
+                        "CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)",
+                        "Drawdown Máximo", "Watermark Máximo", "Punto más Bajo del Drawdown"]].applymap(
+                        lambda x: f"{x * 100:.4f}%" if pd.notnull(x) and not isinstance(x, str) else x
+                        )
+
     
     # Mostrar las métricas calculadas
     st.subheader("Métricas de Riesgo y Rendimiento de los ETFs")
