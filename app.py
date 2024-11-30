@@ -38,7 +38,6 @@ etf_descriptions = {
             - **Volatilidad:** Menor que activos de renta variable, pero mayor que bonos de menor duración.
         """,
         "Estilo": "Renta fija, grado de inversión.",
-        "Costo": 0.15,  # Costo en porcentaje (Expense Ratio)
         "Link Riesgo": "https://www.ishares.com/us/products/239454/ishares-20-year-treasury-bond-etf"
     },
     "EMB": {
@@ -55,7 +54,6 @@ etf_descriptions = {
             - **Riesgo Soberano:** Alta exposición a cambios en políticas fiscales y económicas.
         """,
         "Estilo": "Renta fija, grado de inversión y alto rendimiento.",
-        "Costo": 0.39,  # Costo en porcentaje (Expense Ratio)
         "Link Riesgo": "https://www.ishares.com/us/products/239572/ishares-jp-morgan-usd-emerging-markets-bond-etf"
     },
     "SPY": {
@@ -72,7 +70,6 @@ etf_descriptions = {
             - **Diversificación:** Bajo riesgo idiosincrático por exposición a múltiples sectores.
         """,
         "Estilo": "Blend, Large Cap.",
-        "Costo": 0.09,  # Costo en porcentaje (Expense Ratio)
         "Link Riesgo": "https://www.ssga.com/us/en/intermediary/etfs/funds/spdr-sp-500-etf-trust-spy"
     },
     "EEM": {
@@ -89,7 +86,6 @@ etf_descriptions = {
             - **Volatilidad:** Alta (~20% anualizada en promedio histórico).
         """,
         "Estilo": "Blend, Emerging Markets.",
-        "Costo": 0.68,  # Costo en porcentaje (Expense Ratio)
         "Link Riesgo": "https://www.ishares.com/us/products/239637/ishares-msci-emerging-markets-etf"
     },
     "GLD": {
@@ -105,7 +101,6 @@ etf_descriptions = {
             - **Volatilidad:** Moderada (~15% anualizada), más baja que la de acciones emergentes.
         """,
         "Estilo": "Materias primas.",
-        "Costo": 0.40,  # Costo en porcentaje (Expense Ratio)
         "Link Riesgo": "https://www.spdrgoldshares.com/usa/"
     }
 }
@@ -114,6 +109,10 @@ etf_descriptions = {
 st.header("Descripción y Series de Tiempo de los ETFs Seleccionados")
 for category, etf in etfs.items():
     details = etf_descriptions[etf]
+
+    # Obtener el último precio de cierre
+    data = yf.download(etf, period="1d")  # Descargar datos solo de hoy
+    last_close = data["Adj Close"].iloc[-1]  # Obtener el último precio de cierre ajustado
 
     # Mostrar información sin color en el nombre del ETF
     st.markdown(f"### {etf} - {details['Tipo']}")
@@ -124,9 +123,8 @@ for category, etf in etfs.items():
     st.markdown(f"- **Regiones:** {details['Regiones']}")
     st.markdown(f"- **Métricas de Riesgo:** {details['Métricas de Riesgo']}")
     
-    # Convertir costo de porcentaje a dólares por cada $10,000 invertidos
-    costo_en_dolares = details['Costo'] * 10000 / 100  # Cálculo de costo en dólares
-    st.markdown(f"- **Costo en Dólares (por $10,000 invertidos):** ${costo_en_dolares:.2f}")
+    # Mostrar el último precio de cierre
+    st.markdown(f"- **Último Precio de Cierre (hoy):** ${last_close:.2f}")
     
     st.markdown(f"- [Más detalles sobre métricas de riesgo para {etf}]({details['Link Riesgo']})")
 
