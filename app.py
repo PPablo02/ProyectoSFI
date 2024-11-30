@@ -134,6 +134,27 @@ with tabs[1]:
         # Enlace para más detalles del ETF
         st.markdown(f"[Más detalles sobre este ETF]({detalles['url']})")
 
+     # --- Mostrar todas las series de tiempo en una sola gráfica ---
+    st.subheader("Serie de Tiempo Combinada de Todos los ETFs")
+    
+    # Crear gráfico con todas las series de tiempo
+    fig_all = go.Figure()
+
+    for etf, detalles in etfs.items():
+        data, returns = ventana1([etf], start_date="2010-01-01")
+        fig_all.add_trace(go.Scatter(x=data.index, y=data[etf], mode='lines', name=detalles['nombre']))
+    
+    # Configuración del gráfico combinado
+    fig_all.update_layout(
+        title="Serie de Tiempo Combinada de Todos los ETFs",
+        xaxis_title='Fecha',
+        yaxis_title='Precio Ajustado de Cierre',
+        template='plotly_dark'
+    )
+    
+    # Mostrar gráfico interactivo combinado
+    st.plotly_chart(fig_all)
+
 
 # --- Estadísticas de los ETF´s ---
 with tabs[2]:
