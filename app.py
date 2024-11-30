@@ -37,6 +37,7 @@ st.markdown("""
         margin: 5px;
         cursor: pointer;
         font-size: 18px;
+        width: 200px;
     }
     .tabs button:hover {
         background-color: #e0e0e0;
@@ -108,17 +109,29 @@ def pagina_black_litterman():
 # Crear un conjunto de botones como pestañas
 tabs = ["Inicio", "Selección de ETFs", "Stats de los ETFs", "Portafolios Óptimos y Backtesting", "Modelo de Black-Litterman"]
 
-# Muestra botones para las pestañas
-selected_tab = st.radio("", tabs, index=0, key="tabs", label_visibility="collapsed")
+# Crear una variable de estado para almacenar la pestaña activa
+if "active_tab" not in st.session_state:
+    st.session_state.active_tab = tabs[0]  # Página por defecto
+
+# Mostrar las pestañas como botones
+st.markdown("<div class='tabs'>", unsafe_allow_html=True)
+for tab in tabs:
+    if st.button(tab, key=tab, use_container_width=True):
+        st.session_state.active_tab = tab
+    if st.session_state.active_tab == tab:
+        st.markdown(f"<button class='active'>{tab}</button>", unsafe_allow_html=True)
+    else:
+        st.markdown(f"<button>{tab}</button>", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
 
 # Mostrar el contenido correspondiente a la pestaña seleccionada
-if selected_tab == "Inicio":
+if st.session_state.active_tab == "Inicio":
     pagina_inicio()
-elif selected_tab == "Selección de ETFs":
+elif st.session_state.active_tab == "Selección de ETFs":
     pagina_etfs()
-elif selected_tab == "Stats de los ETFs":
+elif st.session_state.active_tab == "Stats de los ETFs":
     pagina_stats_etfs()
-elif selected_tab == "Portafolios Óptimos y Backtesting":
+elif st.session_state.active_tab == "Portafolios Óptimos y Backtesting":
     pagina_portafolios()
-elif selected_tab == "Modelo de Black-Litterman":
+elif st.session_state.active_tab == "Modelo de Black-Litterman":
     pagina_black_litterman()
