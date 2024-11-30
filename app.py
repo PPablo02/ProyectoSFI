@@ -5,48 +5,88 @@ import plotly.express as px
 # Título de la aplicación
 st.title("Optimización de Portafolios: Selección de Activos")
 
-# Selección de ETFs
-etfs = st.multiselect(
-    "Selecciona 5 ETFs:",
-    options=["SPY", "QQQ", "IWM", "EEM", "TLT", "GLD"],  # Ejemplo de opciones
-    default=["SPY", "QQQ", "IWM", "EEM", "TLT"]
-)
+# Definir los ETFs seleccionados y sus categorías
+etfs = {
+    "Renta Fija Desarrollada": "TLT",  # Ejemplo: Bonos del Tesoro EE.UU. a Largo Plazo
+    "Renta Fija Emergente": "EMB",    # Ejemplo: Bonos Mercados Emergentes
+    "Renta Variable Desarrollada": "SPY",  # Ejemplo: S&P 500
+    "Renta Variable Emergente": "EEM",    # Ejemplo: Acciones Mercados Emergentes
+    "Materias Primas": "GLD"  # Ejemplo: Oro
+}
 
-# Obtener información detallada y mostrar viñetas para cada ETF
-if len(etfs) == 5:
-    st.header("Descripción de los ETFs Seleccionados")
-
-    # Mostrar información para cada ETF
-    for etf in etfs:
-        # Descargar información del ETF desde Yahoo Finance
-        ticker = yf.Ticker(etf)
-        info = ticker.info
-
-        # Información básica
-        nombre = info.get("shortName", "N/A")
-        divisa = info.get("currency", "N/A")
-        costo = info.get("expenseRatio", "N/A")
-        costo = f"{costo * 100:.2f}%" if isinstance(costo, float) else "N/A"
-
-        # Campo para agregar un resumen manual
-        resumen = st.text_area(f"Resumen para {etf}:", placeholder="Escribe aquí el resumen del ETF.")
-
-        # Mostrar información en formato de viñetas
-        st.markdown(f"### {etf} - {nombre}")
-        st.markdown(f"- **Divisa:** {divisa}")
-        st.markdown(f"- **Costo Anual:** {costo}")
-        st.markdown(f"- **Resumen:** {resumen if resumen else 'No se ha ingresado un resumen.'}")
-        st.markdown("---")  # Línea separadora para mejor visualización
-
-    # Descarga de datos históricos
-    st.header("Series de Tiempo de los ETFs Seleccionados")
-    data = {
-        etf: yf.download(etf, start="2010-01-01", end="2023-12-31")["Adj Close"]
-        for etf in etfs
+# Información básica y descripciones manuales de los ETFs
+etf_descriptions = {
+    "TLT": {
+        "Exposición": "Bonos del Tesoro de EE.UU. a largo plazo.",
+        "Índice": "ICE U.S. Treasury 20+ Year Bond Index",
+        "Divisa": "USD",
+        "Contribuidores Principales": "Bonos a largo plazo emitidos por el gobierno de EE.UU.",
+        "Regiones": "Estados Unidos",
+        "Métricas de Riesgo": "Alta duración (>20 años), sensibilidad a tasas de interés.",
+        "Estilo": "Renta fija, grado de inversión.",
+        "Costo": "0.15%"
+    },
+    "EMB": {
+        "Exposición": "Bonos soberanos de mercados emergentes denominados en dólares.",
+        "Índice": "J.P. Morgan EMBI Global Core Index",
+        "Divisa": "USD",
+        "Contribuidores Principales": "Gobiernos de mercados emergentes como Brasil, México, Turquía.",
+        "Regiones": "Mercados emergentes.",
+        "Métricas de Riesgo": "Duración moderada, beta con riesgo soberano.",
+        "Estilo": "Renta fija, grado de inversión y alto rendimiento.",
+        "Costo": "0.39%"
+    },
+    "SPY": {
+        "Exposición": "Acciones de empresas grandes de EE.UU. en el índice S&P 500.",
+        "Índice": "S&P 500",
+        "Divisa": "USD",
+        "Contribuidores Principales": "Apple, Microsoft, Amazon.",
+        "Regiones": "Estados Unidos.",
+        "Métricas de Riesgo": "Beta ~1 con el mercado, volatilidad moderada.",
+        "Estilo": "Blend, Large Cap.",
+        "Costo": "0.09%"
+    },
+    "EEM": {
+        "Exposición": "Acciones de mercados emergentes.",
+        "Índice": "MSCI Emerging Markets Index",
+        "Divisa": "USD",
+        "Contribuidores Principales": "Tencent, Samsung, Alibaba.",
+        "Regiones": "China, Corea del Sur, Brasil, India.",
+        "Métricas de Riesgo": "Beta alto (~1.2), alta volatilidad.",
+        "Estilo": "Blend, Emerging Markets.",
+        "Costo": "0.68%"
+    },
+    "GLD": {
+        "Exposición": "Oro físico.",
+        "Índice": "Precio spot del oro.",
+        "Divisa": "USD",
+        "Contribuidores Principales": "Lingotes de oro almacenados en bóvedas seguras.",
+        "Regiones": "Global.",
+        "Métricas de Riesgo": "Bajo beta con acciones (~0), alta correlación con inflación.",
+        "Estilo": "Materias primas.",
+        "Costo": "0.40%"
     }
+}
 
-    # Graficar series de tiempo
-    for etf, series in data.items():
-        st.subheader(f"Serie de Tiempo: {etf}")
-        fig = px.line(series, title=f"Serie de tiempo de {etf}", labels={"index": "Fecha", "value": "Precio Ajustado"})
-        st.plotly_chart(fig)
+# Mostrar la información de cada ETF en formato de viñetas
+st.header("Descripción de los ETFs Seleccionados")
+for category, etf in etfs.items():
+    details = etf_descriptions[etf]
+    st.subheader(f"{category} - {etf}")
+    st.markdown(f"- **Exposición:** {details['Exposición']}")
+    st.markdown(f"- **Índice:** {details['Índice']}")
+    st.markdown(f"- **Divisa:** {details['Divisa']}")
+    st.markdown(f"- **Contribuidores Principales:** {details['Contribuidores Principales']}")
+    st.markdown(f"- **Regiones:** {details['Regiones']}")
+    st.markdown(f"- **Métricas de Riesgo:** {details['Métricas de Riesgo']}")
+    st.markdown(f"- **Estilo:** {details['Estilo']}")
+    st.markdown(f"- **Costo:** {details['Costo']}")
+    st.markdown("---")  # Línea separadora
+
+# Descargar y mostrar las series de tiempo de los ETFs seleccionados
+st.header("Series de Tiempo de los ETFs Seleccionados")
+for category, etf in etfs.items():
+    series = yf.download(etf, start="2010-01-01", end="2023-12-31")["Adj Close"]
+    st.subheader(f"Serie de Tiempo: {category} - {etf}")
+    fig = px.line(series, title=f"Serie de tiempo de {etf}", labels={"index": "Fecha", "value": "Precio Ajustado"})
+    st.plotly_chart(fig)
