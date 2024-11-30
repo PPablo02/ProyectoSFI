@@ -233,6 +233,8 @@ with tabs[1]:
 
 
 # --- Tab 2: Cálculo de Estadísticas ---
+import seaborn as sns
+
 # --- Tab 2: Cálculo de Estadísticas ---
 with tabs[2]:
     st.header("Estadísticas de los Activos")
@@ -241,9 +243,9 @@ with tabs[2]:
     En esta sección, se calcularán varias métricas estadísticas de los 5 ETFs seleccionados. Los rendimientos diarios de cada ETF serán utilizados para calcular la media, el sesgo, la curtosis, el VaR (Value at Risk), el CVaR (Conditional Value at Risk), el Sharpe Ratio, el Sortino Ratio, y el Drawdown.
     """)
 
-    # Definir los ETFs seleccionados (puedes usar los mismos que en el Tab 1)
+    # Definir los ETFs seleccionados
     etfs = ["LQD", "VWOB", "SPY", "EEM", "DBC"]
-    data, returns = ventana2(etfs, start_date="2010-01-01", end_date="2023-12-31")
+    data, returns = ventana2(etfs, start_date="2010-01-01", end_date=datetime.now().strftime("%Y-%m-%d"))
     
     # Crear un dataframe para almacenar los resultados de las métricas
     resultados = pd.DataFrame(columns=["Media", "Sesgo", "Curtosis", "VaR (95%)", "VaR (97.5%)", "VaR (99%)",
@@ -252,7 +254,6 @@ with tabs[2]:
                               index=etfs)
 
     # Crear un dataframe para almacenar los rendimientos diarios
-    rendimientos_diarios = pd.DataFrame(columns=etfs, index=returns.index)
     rendimientos_diarios = returns
     
     # Calcular las métricas para cada ETF y llenar los dataframes
@@ -266,64 +267,74 @@ with tabs[2]:
     # Mostrar los rendimientos diarios de los ETFs
     st.subheader("Rendimientos Diarios de los ETFs")
     st.write(rendimientos_diarios)
-    
-    # Graficar los rendimientos acumulados de los ETFs
-    st.subheader("Gráfico de Rendimientos Acumulados de los ETFs")
-    cumulative_returns = (returns + 1).cumprod() - 1
-    
-    # Crear gráfico de los rendimientos acumulados
+
+    # Graficar por separado los rendimientos acumulados de cada ETF
+    st.subheader("Rendimientos Acumulados (Por ETF)")
+    for etf in etfs:
+        cumulative_returns = (returns[etf] + 1).cumprod() - 1
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(cumulative_returns.index, cumulative_returns, label=etf, color="blue")
+        ax.set_title(f"Rendimientos Acumulados de {etf} (2010-2023)")
+        ax.set_xlabel("Fecha")
+        ax.set_ylabel("Rendimiento Acumulado")
+        ax.legend(loc="best")
+        st.pyplot(fig)
+
+    # Graficar la distribución de los rendimientos para cada ETF
+    st.subheader("Distribución de los Rendimientos Diarios (Por ETF)")
+    for etf in etfs:
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.hist(returns[etf], bins=50, alpha=0.7, color="green", label=etf)
+        ax.set_title(f"Distribución de los Rendimientos Diarios de {etf}")
+        ax.set_xlabel("Rendimiento Diario")
+        ax.set_ylabel("Frecuencia")
+        ax.legend(loc="best")
+        st.pyplot(fig)
+
+    # Graficar los Watermarks de cada ETF
+    st.subheader("Watermarks (Por ETF)")
+    for etf in etfs:
+        cumulative_returns = (returns[etf] + 1).cumprod() - 1
+        watermark = cumulative_returns.cummax()
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(watermark.index, watermark, label=f"Watermark {etf}", color="purple")
+        ax.set_title(f"Watermark de {etf}")
+        ax.set_xlabel("Fecha")
+        ax.set_ylabel("Watermark (Valor Máximo)")
+        ax.legend(loc="best")
+        st.pyplot(fig)
+
+    # Graficar los Drawdowns de cada ETF
+    st.subheader("Drawdowns (Por ETF)")
+    for etf in etfs:
+        cumulative_returns = (returns[etf] + 1).cumprod() - 1
+        drawdown = cumulative_returns - cumulative_returns.cummax()
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(drawdown.index, drawdown, label=f"Drawdown {etf}", color="red")
+        ax.set_title(f"Drawdown de {etf}")
+        ax.set_xlabel("Fecha")
+        ax.set_ylabel("Drawdown")
+        ax.legend(loc="best")
+        st.pyplot(fig)
+
+    # Graficar los rendimientos acumulados de todos los ETFs
+    st.subheader("Rendimientos Acumulados de Todos los ETFs")
+    cumulative_returns_all = (returns + 1).cumprod() - 1
     fig, ax = plt.subplots(figsize=(10, 6))
     for etf in etfs:
-        ax.plot(cumulative_returns.index, cumulative_returns[etf], label=etf)
-    
-    ax.set_title("Rendimientos Acumulados de los ETFs (2010-2023)")
+        ax.plot(cumulative_returns_all.index, cumulative_returns_all[etf], label=etf)
+    ax.set_title("Rendimientos Acumulados de Todos los ETFs (2010-2023)")
     ax.set_xlabel("Fecha")
     ax.set_ylabel("Rendimiento Acumulado")
     ax.legend(loc="best")
     st.pyplot(fig)
 
-    # Graficar la distribución de los rendimientos para cada ETF
-    st.subheader("Distribución de los Rendimientos Diarios de los ETFs")
+    # Heatmap de la matriz de covarianzas entre ETFs
+    st.subheader("Mapa de Calor de la Matriz de Covarianzas entre ETFs")
+    cov_matrix = returns.cov()
     fig, ax = plt.subplots(figsize=(10, 6))
-    for etf in etfs:
-        ax.hist(returns[etf], bins=50, alpha=0.6, label=etf)
-    
-    ax.set_title("Distribución de los Rendimientos Diarios de los ETFs")
-    ax.set_xlabel("Rendimiento Diario")
-    ax.set_ylabel("Frecuencia")
-    ax.legend(loc="best")
-    st.pyplot(fig)
-
-    # Graficar los Drawdowns
-    st.subheader("Drawdowns de los ETFs")
-    fig, ax = plt.subplots(figsize=(10, 6))
-    for etf in etfs:
-        cumulative_returns = (returns[etf] + 1).cumprod() - 1
-        drawdown = cumulative_returns - cumulative_returns.cummax()
-        ax.plot(drawdown.index, drawdown, label=etf)
-        
-        # Marcando el punto más bajo de cada Drawdown
-        lowest_point = drawdown.min()
-        ax.scatter(drawdown.idxmin(), lowest_point, color='red', label=f'Punto más Bajo: {lowest_point:.2%}')
-    
-    ax.set_title("Drawdowns de los ETFs")
-    ax.set_xlabel("Fecha")
-    ax.set_ylabel("Drawdown")
-    ax.legend(loc="best")
-    st.pyplot(fig)
-
-    # Graficar los Watermarks
-    st.subheader("Watermarks de los ETFs")
-    fig, ax = plt.subplots(figsize=(10, 6))
-    for etf in etfs:
-        cumulative_returns = (returns[etf] + 1).cumprod() - 1
-        watermark = cumulative_returns.cummax()
-        ax.plot(watermark.index, watermark, label=f'Watermark {etf}')
-    
-    ax.set_title("Watermarks de los ETFs")
-    ax.set_xlabel("Fecha")
-    ax.set_ylabel("Watermark (Valor Máximo)")
-    ax.legend(loc="best")
+    sns.heatmap(cov_matrix, annot=True, fmt=".2f", cmap="coolwarm", cbar=True, ax=ax)
+    ax.set_title("Matriz de Covarianzas entre ETFs")
     st.pyplot(fig)
 
 
