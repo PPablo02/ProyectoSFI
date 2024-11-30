@@ -24,74 +24,40 @@ def ventana1(etfs, start_date="2010-01-01"):
 
     # --- Funciones para el tab2 ---
 
-def cargar_datos(etfs, start_date="2010-01-01", end_date="2023-12-31"):
-        """Cargar datos ajustados de cierre y calcular rendimientos diarios."""
-        data = yf.download(etfs, start=start_date, end=end_date)["Adj Close"]
-        rendimientos = data.pct_change().dropna()
-        return data, rendimientos
+def calcular_metricas(returns):
+    # Cálculos básicos
+    media = returns.mean()
+    sesgo = skew(returns)
+    curtosis = kurtosis(returns)
+    
+    # VaR y CVaR (Nivel de confianza al 95%)
+    var_95 = np.percentile(returns, 5)
+    cvar_95 = returns[returns <= var_95].mean()
+    
+    # Ratio de Sharpe y Sortino (usando un retorno libre de riesgo de 0%)
+    sharpe_ratio = media / returns.std()
+    sortino_ratio = media / returns[returns < 0].std()
+    
+    # Drawdown
+    max_drawdown = (returns.cumsum() - returns.cumsum().cummax()).min()
+    
+    # Resultados
+    return {
+        'Media': media,
+        'Sesgo': sesgo,
+        'Curtosis': curtosis,
+        'VaR (95%)': var_95,
+        'CVaR (95%)': cvar_95,
+        'Sharpe Ratio': sharpe_ratio,
+        'Sortino Ratio': sortino_ratio,
+        'Drawdown Máximo': max_drawdown
+    }
 
-def calcular_metricas(rendimientos):
-        """Calcular métricas estadísticas para un DataFrame de rendimientos."""
-        estadisticas = pd.DataFrame(index=rendimientos.columns)
-
-        # Media diaria
-        estadisticas['Media diaria'] = rendimientos.mean()
-
-        # Sesgo
-        estadisticas['Sesgo'] = rendimientos.skew()
-
-        # Exceso de curtosis
-        estadisticas['Exceso de Curtosis'] = rendimientos.kurtosis()
-
-        # VaR y CVaR para distintos niveles de confianza
-        niveles_confianza = [0.95, 0.975, 0.99]
-        for nivel in niveles_confianza:
-            estadisticas[f'VaR {int(nivel*100)}%'] = rendimientos.quantile(1 - nivel)
-            estadisticas[f'CVaR {int(nivel*100)}%'] = rendimientos[rendimientos < rendimientos.quantile(1 - nivel)].mean()
-
-        # Sharpe Ratio (suponiendo una tasa libre de riesgo diaria de 0)
-        estadisticas['Sharpe Ratio'] = rendimientos.mean() / rendimientos.std()
-
-        # Sortino Ratio
-        downside = rendimientos[rendimientos < 0].std()
-        estadisticas['Sortino Ratio'] = rendimientos.mean() / downside
-
-        # Drawdown Máximo
-        cumulative_returns = (1 + rendimientos).cumprod()
-        running_max = cumulative_returns.cummax()
-        drawdown = (cumulative_returns - running_max) / running_max
-        estadisticas['Drawdown Máximo'] = drawdown.min()
-
-        return estadisticas
-
-def graficar_drawdown(data, rendimientos, nombre_etf):
-        """Graficar serie de tiempo del ETF con drawdowns y watermarks."""
-        cumulative_returns = (1 + rendimientos).cumprod()
-        running_max = cumulative_returns.cummax()
-        drawdown = (cumulative_returns - running_max) / running_max
-
-        plt.figure(figsize=(12, 6))
-        plt.plot(data.index, cumulative_returns, label="Retornos acumulados")
-        plt.plot(data.index, running_max, label="Watermark", linestyle="--")
-        plt.fill_between(data.index, cumulative_returns.squeeze(), running_max.squeeze(), 
-                         color='red', alpha=0.3, label="Drawdown")
-        plt.title(f"Drawdown y Watermarks para {nombre_etf}")
-        plt.xlabel("Fecha")
-        plt.ylabel("Valor acumulado")
-        plt.legend()
-        st.pyplot(plt)
-
-def graficar_rendimientos(rendimientos, nombre_etf):
-        """Graficar rendimientos diarios para un ETF."""
-        plt.figure(figsize=(12, 6))
-        plt.plot(rendimientos.index, rendimientos, label="Rendimientos diarios")
-        plt.axhline(y=0, color='gray', linestyle='--', linewidth=1)
-        plt.title(f"Rendimientos Diarios para {nombre_etf}")
-        plt.xlabel("Fecha")
-        plt.ylabel("Rendimiento Diario")
-        plt.legend()
-        st.pyplot(plt)
-
+# --- Función para cargar datos ---
+def ventana2(etfs, start_date="2010-01-01", end_date="2023-12-31"):
+    data = yf.download(etfs, start=start_date, end=end_date)["Adj Close"]
+    returns = data.pct_change().dropna()
+    return data, returns
 
 # --- Streamlit UI ---
 st.title("Proyecto de Optimización de Portafolios")
@@ -252,36 +218,55 @@ with tabs[1]:
 
 # --- Tab 2: Cálculo de Estadísticas ---
 with tabs[2]:
-    st.title("Estadísticas de los Activos")
-
+    st.header("Estadísticas de los Activos")
+    
     st.write("""
-    En este apartado se calculan los rendimientos diarios y métricas clave de los ETFs seleccionados. 
-    Además, se visualizan los rendimientos diarios y se destacan los drawdowns y watermarks 
-    para cada ETF desde 2010 hasta 2023.
+    En esta sección, se calcularán varias métricas estadísticas de los 5 ETFs seleccionados. Los rendimientos diarios de cada ETF serán utilizados para calcular la media, el sesgo, la curtosis, el VaR (Value at Risk), el CVaR (Conditional Value at Risk), el Sharpe Ratio, el Sortino Ratio, y el Drawdown.
     """)
 
-    # --- Descargar datos y calcular métricas ---
+    # Definir los ETFs seleccionados (puedes usar los mismos que en el Tab 1)
     etfs = ["LQD", "VWOB", "SPY", "EEM", "DBC"]
-    data, rendimientos = cargar_datos(etfs)
-
-    # Calcular métricas para cada ETF
-    estadisticas = calcular_metricas(rendimientos)
-    st.subheader("Métricas Estadísticas de los ETFs")
-    st.dataframe(estadisticas)
-
-    # --- Graficar resultados para cada ETF ---
-    st.subheader("Visualizaciones por ETF")
-    for etf in etfs:
-        st.write(f"### {etf}")
-        
-        # Graficar rendimientos diarios
-        st.write("#### Rendimientos Diarios")
-        graficar_rendimientos(rendimientos[etf], etf)
-
-        # Graficar Drawdowns y Watermarks
-        st.write("#### Drawdowns y Watermarks")
-        graficar_drawdown(data[[etf]], rendimientos[etf], etf)
+    data, returns = ventana2(etfs, start_date="2010-01-01", end_date="2023-12-31")
     
+    # Crear un dataframe para almacenar los resultados
+    resultados = pd.DataFrame(columns=["Media", "Sesgo", "Curtosis", "VaR (95%)", "CVaR (95%)", "Sharpe Ratio", "Sortino Ratio", "Drawdown Máximo"], index=etfs)
+    
+    # Calcular las métricas para cada ETF
+    for etf in etfs:
+        resultados.loc[etf] = calcular_metricas(returns[etf])
+    
+    # Mostrar las métricas calculadas
+    st.subheader("Métricas de Riesgo y Rendimiento de los ETFs")
+    st.write(resultados)
+    
+    # Graficar los rendimientos acumulados de los ETFs
+    st.subheader("Gráfico de Rendimientos Acumulados de los ETFs")
+    cumulative_returns = (returns + 1).cumprod() - 1
+    
+    # Crear gráfico de los rendimientos acumulados
+    fig, ax = plt.subplots(figsize=(10, 6))
+    for etf in etfs:
+        ax.plot(cumulative_returns.index, cumulative_returns[etf], label=etf)
+    
+    ax.set_title("Rendimientos Acumulados de los ETFs (2010-2023)")
+    ax.set_xlabel("Fecha")
+    ax.set_ylabel("Rendimiento Acumulado")
+    ax.legend(loc="best")
+    st.pyplot(fig)
+
+    # Graficar la distribución de los rendimientos para cada ETF
+    st.subheader("Distribución de los Rendimientos Diarios de los ETFs")
+    fig, ax = plt.subplots(figsize=(10, 6))
+    for etf in etfs:
+        ax.hist(returns[etf], bins=50, alpha=0.6, label=etf)
+    
+    ax.set_title("Distribución de los Rendimientos Diarios de los ETFs")
+    ax.set_xlabel("Rendimiento Diario")
+    ax.set_ylabel("Frecuencia")
+    ax.legend(loc="best")
+    st.pyplot(fig)    
+
+
 # --- Portafolios Óptimos ---
 with tabs[3]:
      st.header("Portafolios Óptimos")
