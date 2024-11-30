@@ -1,148 +1,60 @@
 import streamlit as st
-import yfinance as yf
-import plotly.graph_objects as go
 
-# Título de la aplicación
-st.title("Optimización de Portafolios: Selección de Activos")
+# Título principal
+st.title("Proyecto Final de Manejo de Portafolios y Asset Allocation")
 
-# Definir los ETFs seleccionados y sus categorías
-etfs = {
-    "Renta Fija Desarrollada": "TLT",  # Bonos del Tesoro EE.UU. a Largo Plazo
-    "Renta Fija Emergente": "EMB",    # Bonos Mercados Emergentes
-    "Renta Variable Desarrollada": "SPY",  # S&P 500
-    "Renta Variable Emergente": "EEM",    # Acciones Mercados Emergentes
-    "Materias Primas": "GLD"  # Oro
-}
+# Barra de navegación con pestañas
+tabs = st.sidebar.radio("Selecciona una pestaña", ["Introducción", "Selección de ETFs", "Stats de los ETFs", "Portafolios Óptimos y Backtesting", "Modelo de Black-Litterman"])
 
-# Colores personalizados para cada ETF
-etf_colors = {
-    "TLT": "blue",
-    "EMB": "green",
-    "SPY": "red",
-    "EEM": "orange",
-    "GLD": "purple"
-}
-
-# Información básica y descripciones manuales de los ETFs
-etf_descriptions = {
-    "TLT": {
-        "Tipo": "Renta Fija Desarrollada",
-        "Exposición": "Bonos del Tesoro de EE.UU. a largo plazo.",
-        "Índice": "ICE U.S. Treasury 20+ Year Bond Index",
-        "Divisa": "USD",
-        "Contribuidores Principales": "Bonos a largo plazo emitidos por el gobierno de EE.UU.",
-        "Regiones": "Estados Unidos",
-        "Métricas de Riesgo": """
-            - **Duración:** Alta (>20 años), lo que implica una alta sensibilidad a cambios en las tasas de interés.
-            - **Riesgo de Tasa de Interés:** Incrementos en las tasas pueden reducir significativamente el valor de este ETF.
-            - **Volatilidad:** Menor que activos de renta variable, pero mayor que bonos de menor duración.
-        """,
-        "Estilo": "Renta fija, grado de inversión.",
-        "Link Riesgo": "https://www.ishares.com/us/products/239454/ishares-20-year-treasury-bond-etf"
-    },
-    "EMB": {
-        "Tipo": "Renta Fija Emergente",
-        "Exposición": "Bonos soberanos de mercados emergentes denominados en dólares.",
-        "Índice": "J.P. Morgan EMBI Global Core Index",
-        "Divisa": "USD",
-        "Contribuidores Principales": "Gobiernos de mercados emergentes como Brasil, México, Turquía.",
-        "Regiones": "Mercados emergentes.",
-        "Métricas de Riesgo": """
-            - **Duración:** Moderada (~7 años).
-            - **Riesgo de Crédito:** Depende de la calidad crediticia de países como Brasil, Turquía y México.
-            - **Riesgo de Liquidez:** Menor liquidez comparada con bonos de mercados desarrollados.
-            - **Riesgo Soberano:** Alta exposición a cambios en políticas fiscales y económicas.
-        """,
-        "Estilo": "Renta fija, grado de inversión y alto rendimiento.",
-        "Link Riesgo": "https://www.ishares.com/us/products/239572/ishares-jp-morgan-usd-emerging-markets-bond-etf"
-    },
-    "SPY": {
-        "Tipo": "Renta Variable Desarrollada",
-        "Exposición": "Acciones de empresas grandes de EE.UU. en el índice S&P 500.",
-        "Índice": "S&P 500",
-        "Divisa": "USD",
-        "Contribuidores Principales": "Apple, Microsoft, Amazon.",
-        "Regiones": "Estados Unidos.",
-        "Métricas de Riesgo": """
-            - **Beta:** ~1, refleja alta correlación con el mercado en general.
-            - **Volatilidad:** Moderada (~16% anualizada en promedio histórico).
-            - **Riesgo de Mercado:** Afectado por fluctuaciones económicas globales.
-            - **Diversificación:** Bajo riesgo idiosincrático por exposición a múltiples sectores.
-        """,
-        "Estilo": "Blend, Large Cap.",
-        "Link Riesgo": "https://www.ssga.com/us/en/intermediary/etfs/funds/spdr-sp-500-etf-trust-spy"
-    },
-    "EEM": {
-        "Tipo": "Renta Variable Emergente",
-        "Exposición": "Acciones de mercados emergentes.",
-        "Índice": "MSCI Emerging Markets Index",
-        "Divisa": "USD",
-        "Contribuidores Principales": "Tencent, Samsung, Alibaba.",
-        "Regiones": "China, Corea del Sur, Brasil, India.",
-        "Métricas de Riesgo": """
-            - **Beta:** ~1.2, más volátil que el mercado general.
-            - **Riesgo de Moneda:** Fluctuaciones en monedas emergentes frente al dólar.
-            - **Riesgo Geopolítico:** Alta exposición a cambios políticos en mercados emergentes.
-            - **Volatilidad:** Alta (~20% anualizada en promedio histórico).
-        """,
-        "Estilo": "Blend, Emerging Markets.",
-        "Link Riesgo": "https://www.ishares.com/us/products/239637/ishares-msci-emerging-markets-etf"
-    },
-    "GLD": {
-        "Tipo": "Materias Primas",
-        "Exposición": "Oro físico.",
-        "Índice": "Precio spot del oro.",
-        "Divisa": "USD",
-        "Contribuidores Principales": "Lingotes de oro almacenados en bóvedas seguras.",
-        "Regiones": "Global.",
-        "Métricas de Riesgo": """
-            - **Riesgo de Mercado:** Afectado por tasas de interés, inflación y fluctuaciones del dólar.
-            - **Riesgo de Almacenamiento:** Relacionado con los costos y la seguridad del almacenamiento físico.
-            - **Volatilidad:** Moderada (~15% anualizada), más baja que la de acciones emergentes.
-        """,
-        "Estilo": "Materias primas.",
-        "Link Riesgo": "https://www.spdrgoldshares.com/usa/"
-    }
-}
-
-# Mostrar la información de cada ETF con su serie de tiempo
-st.header("Descripción y Series de Tiempo de los ETFs Seleccionados")
-for category, etf in etfs.items():
-    details = etf_descriptions[etf]
-
-    # Obtener el último precio de cierre
-    data = yf.download(etf, period="1d")  # Descargar datos solo de hoy
-    last_close = data["Adj Close"].iloc[-1]  # Obtener el último precio de cierre ajustado
-
-    # Mostrar información sin color en el nombre del ETF
-    st.markdown(f"### {etf} - {details['Tipo']}")
-    st.markdown(f"- **Exposición:** {details['Exposición']}")
-    st.markdown(f"- **Índice:** {details['Índice']}")
-    st.markdown(f"- **Divisa:** {details['Divisa']}")
-    st.markdown(f"- **Contribuidores Principales:** {details['Contribuidores Principales']}")
-    st.markdown(f"- **Regiones:** {details['Regiones']}")
-    st.markdown(f"- **Métricas de Riesgo:** {details['Métricas de Riesgo']}")
+if tabs == "Introducción":
+    # Pestaña de introducción
+    st.header("Introducción")
+    st.write("""
+        Este es el proyecto final del curso de Manejo de Portafolios y Asset Allocation. 
+        El objetivo es crear un portafolio óptimo usando diferentes modelos y técnicas, 
+        incluyendo el modelo de Black-Litterman, y realizar un backtesting de los portafolios obtenidos.
+    """)
+    st.write("A continuación, puedes ingresar cuatro nombres:")
     
-    # Mostrar el último precio de cierre
-    st.markdown(f"- **Último Precio de Cierre (hoy):** ${last_close:.2f}")
-    
-    st.markdown(f"- [Más detalles sobre métricas de riesgo para {etf}]({details['Link Riesgo']})")
+    # Lista para ingresar los nombres
+    names = [st.text_input(f"Nombre {i+1}") for i in range(4)]
+    st.write("Los nombres ingresados son:", names)
 
-    # Descargar y graficar la serie de tiempo
-    series = yf.download(etf, start="2010-01-01", end="2023-12-31")["Adj Close"]
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=series.index, y=series, mode="lines", line=dict(color=etf_colors[etf]), name=etf))
-    st.plotly_chart(fig)
+elif tabs == "Selección de ETFs":
+    # Pestaña para seleccionar 5 ETFs
+    st.header("Selección de 5 ETFs")
+    st.write("""
+        En esta sección puedes seleccionar 5 ETFs que serán parte de tu análisis de portafolios.
+    """)
+    etfs = []
+    for i in range(1, 6):
+        etfs.append(st.text_input(f"ETF {i}"))
+    st.write("Los ETFs seleccionados son:", etfs)
 
-    # Separador para mejorar visualización
-    st.markdown("---")
+elif tabs == "Stats de los ETFs":
+    # Pestaña de estadísticas de los ETFs
+    st.header("Stats de los ETFs")
+    st.write("""
+        Aquí puedes ver las estadísticas relacionadas con los ETFs seleccionados.
+    """)
+    # Estadísticas básicas (esto puede ser más detallado dependiendo de los datos disponibles)
+    st.write("Aquí irían las estadísticas como el rendimiento histórico, volatilidad, etc.")
 
-# Mostrar gráfica combinada de todas las series de tiempo
-st.header("Comparación de Series de Tiempo de Todos los ETFs")
-combined_fig = go.Figure()
-for category, etf in etfs.items():
-    details = etf_descriptions[etf]
-    series = yf.download(etf, start="2010-01-01", end="2023-12-31")["Adj Close"]
-    combined_fig.add_trace(go.Scatter(x=series.index, y=series, mode="lines", line=dict(color=etf_colors[etf]), name=etf))
+elif tabs == "Portafolios Óptimos y Backtesting":
+    # Pestaña de portafolios óptimos y backtesting
+    st.header("Portafolios Óptimos y Backtesting")
+    st.write("""
+        En esta sección se realiza la optimización de portafolios y el backtesting para evaluar el rendimiento.
+    """)
+    # Código para la optimización de portafolios y backtesting (aquí puedes integrar tus modelos de optimización)
+    st.write("Aquí iría el análisis de portafolios óptimos y el backtesting de estos portafolios.")
 
-st.plotly_chart(combined_fig)
+elif tabs == "Modelo de Black-Litterman":
+    # Pestaña del modelo de Black-Litterman
+    st.header("Modelo de Black-Litterman")
+    st.write("""
+        En esta sección se implementa el modelo de Black-Litterman para obtener la asignación de activos óptima.
+    """)
+    # Aquí puedes agregar el código que implementa el modelo Black-Litterman
+    st.write("Aquí iría la implementación del modelo de Black-Litterman.")
+
