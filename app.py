@@ -1,137 +1,176 @@
 import streamlit as st
+import yfinance as yf
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+from scipy.stats import skew, kurtosis
+from scipy.optimize import minimize
 
-# Configuración de la página
-st.set_page_config(page_title="Proyecto Final de Manejo de Portafolios", page_icon="📊", layout="wide")
+# Función para cargar los datos de los ETFs
+def load_data(etfs, start_date, end_date):
+    data = yf.download(etfs, start=start_date, end=end_date)['Adj Close']
+    returns = data.pct_change().dropna()  # Calcular rendimientos diarios
+    return data, returns
 
-# Título principal
-st.title("📊 Proyecto Final de Manejo de Portafolios y Asset Allocation")
+# Función para calcular estadísticas de los activos
+def calculate_statistics(returns):
+    stats = {}
+    stats['mean'] = returns.mean()
+    stats['skew'] = skew(returns)
+    stats['kurtosis'] = kurtosis(returns)
+    stats['VaR_95'] = returns.quantile(0.05)  # VaR al 5%
+    stats['CVaR_95'] = returns[returns <= returns.quantile(0.05)].mean()  # CVaR al 5%
+    stats['Sharpe'] = returns.mean() / returns.std()  # Asumiendo tasa libre de riesgo 0%
+    stats['Sortino'] = returns.mean() / returns[returns < 0].std()  # Sortino ratio
+    stats['drawdown'] = (returns.cumsum().min())  # Drawdown acumulado
+    return stats
 
-# Estilos personalizados para los textos
-st.markdown("""
-    <style>
-    .big-font {
-        font-size: 30px !important;
-        color: #4CAF50;
-        font-weight: bold;
-    }
-    .section-title {
-        font-size: 24px;
-        color: #2C3E50;
-        font-weight: bold;
-    }
-    .subsection {
-        font-size: 18px;
-        color: #34495E;
-        font-style: italic;
-    }
-    .tabs {
-        display: flex;
-        justify-content: center;
-        margin-bottom: 30px;
-    }
-    .tabs button {
-        background-color: #f0f0f0;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        padding: 10px 20px;
-        margin: 5px;
-        cursor: pointer;
-        font-size: 18px;
-        width: 200px;
-    }
-    .tabs button:hover {
-        background-color: #e0e0e0;
-    }
-    .tabs button.active {
-        background-color: #3498db;
-        color: white;
-        font-weight: bold;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# Función para optimizar el portafolio con mínima volatilidad
+def optimize_min_volatility(returns):
+    cov_matrix = returns.cov()
+    mean_returns = returns.mean()
+    
+    # Función de volatilidad
+    def objective(weights):
+        return np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
+    
+    # Restricción de que la suma de los pesos sea 1
+    def constraint(weights):
+        return np.sum(weights) - 1
+    
+    # Número de activos
+    num_assets = len(mean_returns)
+    
+    # Pesos iniciales (equitativos)
+    init_weights = np.ones(num_assets) / num_assets
+    
+    # Restricciones y límites
+    cons = [{'type': 'eq', 'fun': constraint}]
+    bounds = [(0, 1) for _ in range(num_assets)]
+    
+    # Optimización para mínima volatilidad
+    result = minimize(objective, init_weights, method='SLSQP', constraints=cons, bounds=bounds)
+    return result.x
 
-# Función para renderizar la página de inicio
-def pagina_inicio():
+# Función para optimizar el portafolio con máximo Sharpe ratio
+def optimize_max_sharpe(returns):
+    cov_matrix = returns.cov()
+    mean_returns = returns.mean()
+    
+    # Función para calcular el Sharpe ratio negativo
+    def objective(weights):
+        portfolio_return = np.sum(weights * mean_returns)
+        portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
+        return -portfolio_return / portfolio_volatility  # Maximizar el Sharpe ratio
+    
+    # Restricción de que la suma de los pesos sea 1
+    def constraint(weights):
+        return np.sum(weights) - 1
+    
+    # Número de activos
+    num_assets = len(mean_returns)
+    
+    # Pesos iniciales (equitativos)
+    init_weights = np.ones(num_assets) / num_assets
+    
+    # Restricciones y límites
+    cons = [{'type': 'eq', 'fun': constraint}]
+    bounds = [(0, 1) for _ in range(num_assets)]
+    
+    # Optimización para máximo Sharpe ratio
+    result = minimize(objective, init_weights, method='SLSQP', constraints=cons, bounds=bounds)
+    return result.x
+
+# Función para hacer backtesting
+def backtest_portfolio(returns, weights):
+    portfolio_returns = np.dot(returns, weights)
+    return portfolio_returns.cumsum()  # Rendimiento acumulado
+
+# --- Streamlit UI ---
+st.title("Proyecto de Optimización de Portafolios")
+
+# Crear tabs
+tabs = st.tabs(["Introducción", "Selección de ETFs", "Estadísticas de Activos", "Portafolios Óptimos", "Backtesting", "Modelo Black-Litterman"])
+
+# --- Introducción ---
+with tabs[0]:
     st.header("Introducción")
-    st.markdown("<p class='big-font'>Bienvenidos al proyecto final del curso de Manejo de Portafolios y Asset Allocation.</p>", unsafe_allow_html=True)
-    st.write("""
-        El objetivo es crear un portafolio óptimo usando diferentes modelos y técnicas, 
-        incluyendo el modelo de Black-Litterman, y realizar un backtesting de los portafolios obtenidos.
-    """)
+    st.write("Este proyecto busca evaluar el rendimiento de un portafolio utilizando diferentes ETFs y técnicas de optimización.")
 
-    # Nombres de los colaboradores
-    colaboradores = [
-        "Pablo Pineda Pineda",
-        "Mariana Vigil Villegas",
-        "Adrián Soriano Fuentes",
-        "Emmanuel Reyes Hernández"
-    ]
+# --- Selección de ETFs ---
+with tabs[1]:
+    st.header("Selección de ETFs")
+    st.write("Selecciona 5 ETFs para formar un portafolio balanceado.")
+    
+    # Listado de ETFs
+    etfs = ["LQD", "VWOB", "SPY", "EEM", "DBC"]
+    st.write("Los ETFs seleccionados son:")
+    st.write(etfs)
+    
+    # Cargar datos
+    data, returns = load_data(etfs, start_date="2010-01-01", end_date="2023-12-31")
+    st.write("Datos cargados correctamente.")
 
-    st.markdown("<p class='section-title'>Colaboradores:</p>", unsafe_allow_html=True)
-    st.write(", ".join(colaboradores))
+# --- Estadísticas de Activos ---
+with tabs[2]:
+    st.header("Estadísticas de Activos")
+    
+    stats = {etf: calculate_statistics(returns[etf]) for etf in etfs}
+    for etf in etfs:
+        st.subheader(f"Estadísticas de {etf}")
+        st.write(stats[etf])
+    
+    # Mostrar gráficos de distribución de rendimientos
+    fig, ax = plt.subplots(1, 1, figsize=(10, 6))
+    for etf in etfs:
+        ax.hist(returns[etf], bins=50, alpha=0.5, label=etf)
+    ax.set_title("Distribución de Rendimientos Diarios")
+    ax.legend()
+    st.pyplot(fig)
 
-# Función para renderizar la página de selección de ETFs
-def pagina_etfs():
-    st.header("Selección de 5 ETFs")
-    st.write("""
-        En esta sección puedes seleccionar 5 ETFs que serán parte de tu análisis de portafolios.
-    """)
-    etfs = []
-    for i in range(1, 6):
-        etfs.append(st.text_input(f"ETF {i}"))
-    st.markdown("<p class='subsection'>Los ETFs seleccionados:</p>", unsafe_allow_html=True)
-    st.write(", ".join(etfs))
+# --- Portafolios Óptimos ---
+with tabs[3]:
+    st.header("Portafolios Óptimos")
+    
+    # Optimizar portafolios con mínima volatilidad y máximo Sharpe ratio
+    optimal_weights_min_vol = optimize_min_volatility(returns)
+    optimal_weights_max_sharpe = optimize_max_sharpe(returns)
+    
+    st.write("Pesos del Portafolio de Mínima Volatilidad:", optimal_weights_min_vol)
+    st.write("Pesos del Portafolio con Máximo Sharpe Ratio:", optimal_weights_max_sharpe)
+    
+    # Mostrar gráficos de rendimiento de los portafolios optimizados
+    portfolio_min_vol = backtest_portfolio(returns, optimal_weights_min_vol)
+    portfolio_max_sharpe = backtest_portfolio(returns, optimal_weights_max_sharpe)
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=data.index, y=portfolio_min_vol, mode='lines', name='Mínima Volatilidad'))
+    fig.add_trace(go.Scatter(x=data.index, y=portfolio_max_sharpe, mode='lines', name='Máximo Sharpe Ratio'))
+    fig.update_layout(title="Backtesting de Portafolios Óptimos")
+    st.plotly_chart(fig)
 
-# Función para renderizar la página de estadísticas de los ETFs
-def pagina_stats_etfs():
-    st.header("Stats de los ETFs")
-    st.write("""
-        Aquí puedes ver las estadísticas relacionadas con los ETFs seleccionados.
-    """)
-    st.markdown("<p class='subsection'>Estadísticas como el rendimiento histórico, volatilidad, etc.</p>", unsafe_allow_html=True)
+# --- Backtesting ---
+with tabs[4]:
+    st.header("Backtesting")
+    
+    # Mostrar el rendimiento acumulado del portafolio optimizado
+    st.write("Evaluando los portafolios de 2021 a 2023...")
+    
+    # Realizar backtesting con los datos de 2021 a 2023
+    data_backtest, returns_backtest = load_data(etfs, start_date="2021-01-01", end_date="2023-12-31")
+    
+    portfolio_min_vol_backtest = backtest_portfolio(returns_backtest, optimal_weights_min_vol)
+    portfolio_max_sharpe_backtest = backtest_portfolio(returns_backtest, optimal_weights_max_sharpe)
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=data_backtest.index, y=portfolio_min_vol_backtest, mode='lines', name='Mínima Volatilidad'))
+    fig.add_trace(go.Scatter(x=data_backtest.index, y=portfolio_max_sharpe_backtest, mode='lines', name='Máximo Sharpe Ratio'))
+    fig.update_layout(title="Backtesting de Portafolios 2021-2023")
+    st.plotly_chart(fig)
 
-# Función para renderizar la página de portafolios óptimos y backtesting
-def pagina_portafolios():
-    st.header("Portafolios Óptimos y Backtesting")
-    st.write("""
-        En esta sección se realiza la optimización de portafolios y el backtesting para evaluar el rendimiento.
-    """)
-    st.markdown("<p class='subsection'>Análisis de portafolios óptimos y backtesting de estos.</p>", unsafe_allow_html=True)
-
-# Función para renderizar la página del modelo de Black-Litterman
-def pagina_black_litterman():
-    st.header("Modelo de Black-Litterman")
-    st.write("""
-        En esta sección se implementa el modelo de Black-Litterman para obtener la asignación de activos óptima.
-    """)
-    st.markdown("<p class='subsection'>Implementación y análisis usando el modelo de Black-Litterman.</p>", unsafe_allow_html=True)
-
-# Crear un conjunto de botones como pestañas
-tabs = ["Inicio", "Selección de ETFs", "Stats de los ETFs", "Portafolios Óptimos y Backtesting", "Modelo de Black-Litterman"]
-
-# Crear una variable de estado para almacenar la pestaña activa
-if "active_tab" not in st.session_state:
-    st.session_state.active_tab = tabs[0]  # Página por defecto
-
-# Mostrar las pestañas como botones
-st.markdown("<div class='tabs'>", unsafe_allow_html=True)
-for tab in tabs:
-    if st.button(tab, key=tab, use_container_width=True):
-        st.session_state.active_tab = tab
-    if st.session_state.active_tab == tab:
-        st.markdown(f"<button class='active'>{tab}</button>", unsafe_allow_html=True)
-    else:
-        st.markdown(f"<button>{tab}</button>", unsafe_allow_html=True)
-st.markdown("</div>", unsafe_allow_html=True)
-
-# Mostrar el contenido correspondiente a la pestaña seleccionada
-if st.session_state.active_tab == "Inicio":
-    pagina_inicio()
-elif st.session_state.active_tab == "Selección de ETFs":
-    pagina_etfs()
-elif st.session_state.active_tab == "Stats de los ETFs":
-    pagina_stats_etfs()
-elif st.session_state.active_tab == "Portafolios Óptimos y Backtesting":
-    pagina_portafolios()
-elif st.session_state.active_tab == "Modelo de Black-Litterman":
-    pagina_black_litterman()
+# --- Modelo Black-Litterman ---
+with tabs[5]:
+    st.header("Modelo Black-Litterman")
+    st.write("Implementación del modelo de optimización Black-Litterman para ajustar los rendimientos esperados.")
+    st.write("Aquí puedes agregar tus perspectivas sobre los activos y cómo el modelo ajusta los rendimientos esperados.")
