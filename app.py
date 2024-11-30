@@ -1,6 +1,5 @@
 import streamlit as st
 import yfinance as yf
-import pandas as pd
 import plotly.express as px
 
 # Título de la aplicación
@@ -13,39 +12,31 @@ etfs = st.multiselect(
     default=["SPY", "QQQ", "IWM", "EEM", "TLT"]
 )
 
-# Obtener información detallada de cada ETF
+# Obtener información detallada y mostrar viñetas para cada ETF
 if len(etfs) == 5:
     st.header("Descripción de los ETFs Seleccionados")
 
-    # Crear un DataFrame vacío para almacenar la información
-    etf_details = []
-
-    # Descargar información para cada ETF seleccionado
+    # Mostrar información para cada ETF
     for etf in etfs:
+        # Descargar información del ETF desde Yahoo Finance
         ticker = yf.Ticker(etf)
-        info = ticker.info  # Información completa del ETF
+        info = ticker.info
 
-        # Extraer datos relevantes
-        etf_details.append({
-            "Ticker": etf,
-            "Nombre": info.get("shortName", "N/A"),
-            "Sector": info.get("sector", "N/A"),
-            "Divisa": info.get("currency", "N/A"),
-            "Activo Principal": info.get("quoteType", "N/A"),
-            "Resumen": info.get("longBusinessSummary", "No disponible"),
-            "Costo (%)": info.get("expenseRatio", "N/A") * 100 if info.get("expenseRatio") else "N/A",
-        })
+        # Información básica
+        nombre = info.get("shortName", "N/A")
+        divisa = info.get("currency", "N/A")
+        costo = info.get("expenseRatio", "N/A")
+        costo = f"{costo * 100:.2f}%" if isinstance(costo, float) else "N/A"
 
-    # Convertir la información a un DataFrame
-    etf_details_df = pd.DataFrame(etf_details)
+        # Campo para agregar un resumen manual
+        resumen = st.text_area(f"Resumen para {etf}:", placeholder="Escribe aquí el resumen del ETF.")
 
-    # Mostrar la tabla en Streamlit
-    st.dataframe(etf_details_df)
-
-    # Mostrar un resumen textual de cada ETF
-    for _, row in etf_details_df.iterrows():
-        st.subheader(f"{row['Ticker']} - {row['Nombre']}")
-        st.write(f"**Resumen:** {row['Resumen']}")
+        # Mostrar información en formato de viñetas
+        st.markdown(f"### {etf} - {nombre}")
+        st.markdown(f"- **Divisa:** {divisa}")
+        st.markdown(f"- **Costo Anual:** {costo}")
+        st.markdown(f"- **Resumen:** {resumen if resumen else 'No se ha ingresado un resumen.'}")
+        st.markdown("---")  # Línea separadora para mejor visualización
 
     # Descarga de datos históricos
     st.header("Series de Tiempo de los ETFs Seleccionados")
