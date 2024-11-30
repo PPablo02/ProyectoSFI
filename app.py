@@ -6,6 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.express as px
+import seaborn as sns
 from scipy.stats import skew, kurtosis
 from scipy.optimize import minimize
 from datetime import datetime
@@ -231,10 +232,6 @@ with tabs[1]:
     # Mostrar gráfico combinado
     st.plotly_chart(fig_all)
 
-
-# --- Tab 2: Cálculo de Estadísticas ---
-import seaborn as sns
-
 # --- Tab 2: Cálculo de Estadísticas ---
 with tabs[2]:
     st.header("Estadísticas de los Activos")
@@ -249,8 +246,8 @@ with tabs[2]:
     
     # Crear un dataframe para almacenar los resultados de las métricas
     resultados = pd.DataFrame(columns=["Media", "Sesgo", "Curtosis", "VaR (95%)", "VaR (97.5%)", "VaR (99%)",
-                                      "CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)", "Sharpe Ratio", "Sortino Ratio",
-                                      "Drawdown Máximo", "Watermark Máximo", "Punto más Bajo del Drawdown"], 
+                                       "CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)", "Sharpe Ratio", "Sortino Ratio",
+                                       "Drawdown Máximo", "Watermark Máximo", "Punto más Bajo del Drawdown"], 
                               index=etfs)
 
     # Crear un dataframe para almacenar los rendimientos diarios
@@ -258,15 +255,27 @@ with tabs[2]:
     
     # Calcular las métricas para cada ETF y llenar los dataframes
     for etf in etfs:
-        resultados.loc[etf] = calcular_metricas(returns[etf])
+        metrics = calcular_metricas(returns[etf])
+        # Redondear valores a 4 decimales
+        resultados.loc[etf] = [round(value, 4) if not isinstance(value, str) else value for value in metrics]
+
+    # Convertir columnas que son porcentajes al formato de porcentaje
+    resultados[["VaR (95%)", "VaR (97.5%)", "VaR (99%)",
+                "CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)",
+                "Drawdown Máximo", "Watermark Máximo", "Punto más Bajo del Drawdown"]] = \
+        resultados[["VaR (95%)", "VaR (97.5%)", "VaR (99%)",
+                    "CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)",
+                    "Drawdown Máximo", "Watermark Máximo", "Punto más Bajo del Drawdown"]].applymap(
+            lambda x: f"{x * 100:.4f}%" if pd.notnull(x) else x
+        )
     
     # Mostrar las métricas calculadas
     st.subheader("Métricas de Riesgo y Rendimiento de los ETFs")
     st.write(resultados)
-    
-    # Mostrar los rendimientos diarios de los ETFs
+
+    # Mostrar los rendimientos diarios de los ETFs redondeados a 4 decimales
     st.subheader("Rendimientos Diarios de los ETFs")
-    st.write(rendimientos_diarios)
+    st.write(rendimientos_diarios.round(4))
 
     # Graficar por separado los rendimientos acumulados de cada ETF
     st.subheader("Rendimientos Acumulados (Por ETF)")
@@ -333,7 +342,7 @@ with tabs[2]:
     st.subheader("Mapa de Calor de la Matriz de Covarianzas entre ETFs")
     cov_matrix = returns.cov()
     fig, ax = plt.subplots(figsize=(10, 6))
-    sns.heatmap(cov_matrix, annot=True, fmt=".2f", cmap="coolwarm", cbar=True, ax=ax)
+    sns.heatmap(cov_matrix, annot=True, fmt=".4f", cmap="coolwarm", cbar=True, ax=ax)
     ax.set_title("Matriz de Covarianzas entre ETFs")
     st.pyplot(fig)
 
