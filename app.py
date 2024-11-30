@@ -68,12 +68,13 @@ etf_descriptions = {
     }
 }
 
-# Mostrar la información de cada ETF en formato de viñetas
-st.header("Descripción de los ETFs Seleccionados")
+# Mostrar la información de cada ETF con su serie de tiempo
+st.header("Descripción y Series de Tiempo de los ETFs Seleccionados")
 for category, etf in etfs.items():
     details = etf_descriptions[etf]
-    st.subheader(f"{category} - {etf}")
-    st.markdown(f"- **Exposición:** {details['Exposición']}")
+
+    # Mostrar información en formato de viñetas
+    st.markdown(f"### {etf} - {details['Exposición']}")
     st.markdown(f"- **Índice:** {details['Índice']}")
     st.markdown(f"- **Divisa:** {details['Divisa']}")
     st.markdown(f"- **Contribuidores Principales:** {details['Contribuidores Principales']}")
@@ -81,12 +82,12 @@ for category, etf in etfs.items():
     st.markdown(f"- **Métricas de Riesgo:** {details['Métricas de Riesgo']}")
     st.markdown(f"- **Estilo:** {details['Estilo']}")
     st.markdown(f"- **Costo:** {details['Costo']}")
-    st.markdown("---")  # Línea separadora
 
-# Descargar y mostrar las series de tiempo de los ETFs seleccionados
-st.header("Series de Tiempo de los ETFs Seleccionados")
-for category, etf in etfs.items():
+    # Descargar y graficar la serie de tiempo
     series = yf.download(etf, start="2010-01-01", end="2023-12-31")["Adj Close"]
-    st.subheader(f"Serie de Tiempo: {category} - {etf}")
+    st.subheader(f"Serie de Tiempo: {etf}")
     fig = px.line(series, title=f"Serie de tiempo de {etf}", labels={"index": "Fecha", "value": "Precio Ajustado"})
     st.plotly_chart(fig)
+
+    # Separador para mejorar visualización
+    st.markdown("---")
