@@ -1,3 +1,4 @@
+# Librerías
 import streamlit as st
 import yfinance as yf
 import numpy as np
@@ -6,86 +7,8 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from scipy.stats import skew, kurtosis
 from scipy.optimize import minimize
+from datetime import datetime
 
-# Función para cargar los datos de los ETFs
-def load_data(etfs, start_date, end_date):
-    data = yf.download(etfs, start=start_date, end=end_date)['Adj Close']
-    returns = data.pct_change().dropna()  # Calcular rendimientos diarios
-    return data, returns
-
-# Función para calcular estadísticas de los activos
-def calculate_statistics(returns):
-    stats = {}
-    stats['mean'] = returns.mean()
-    stats['skew'] = skew(returns)
-    stats['kurtosis'] = kurtosis(returns)
-    stats['VaR_95'] = returns.quantile(0.05)  # VaR al 5%
-    stats['CVaR_95'] = returns[returns <= returns.quantile(0.05)].mean()  # CVaR al 5%
-    stats['Sharpe'] = returns.mean() / returns.std()  # Asumiendo tasa libre de riesgo 0%
-    stats['Sortino'] = returns.mean() / returns[returns < 0].std()  # Sortino ratio
-    stats['drawdown'] = (returns.cumsum().min())  # Drawdown acumulado
-    return stats
-
-# Función para optimizar el portafolio con mínima volatilidad
-def optimize_min_volatility(returns):
-    cov_matrix = returns.cov()
-    mean_returns = returns.mean()
-    
-    # Función de volatilidad
-    def objective(weights):
-        return np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
-    
-    # Restricción de que la suma de los pesos sea 1
-    def constraint(weights):
-        return np.sum(weights) - 1
-    
-    # Número de activos
-    num_assets = len(mean_returns)
-    
-    # Pesos iniciales (equitativos)
-    init_weights = np.ones(num_assets) / num_assets
-    
-    # Restricciones y límites
-    cons = [{'type': 'eq', 'fun': constraint}]
-    bounds = [(0, 1) for _ in range(num_assets)]
-    
-    # Optimización para mínima volatilidad
-    result = minimize(objective, init_weights, method='SLSQP', constraints=cons, bounds=bounds)
-    return result.x
-
-# Función para optimizar el portafolio con máximo Sharpe ratio
-def optimize_max_sharpe(returns):
-    cov_matrix = returns.cov()
-    mean_returns = returns.mean()
-    
-    # Función para calcular el Sharpe ratio negativo
-    def objective(weights):
-        portfolio_return = np.sum(weights * mean_returns)
-        portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
-        return -portfolio_return / portfolio_volatility  # Maximizar el Sharpe ratio
-    
-    # Restricción de que la suma de los pesos sea 1
-    def constraint(weights):
-        return np.sum(weights) - 1
-    
-    # Número de activos
-    num_assets = len(mean_returns)
-    
-    # Pesos iniciales (equitativos)
-    init_weights = np.ones(num_assets) / num_assets
-    
-    # Restricciones y límites
-    cons = [{'type': 'eq', 'fun': constraint}]
-    bounds = [(0, 1) for _ in range(num_assets)]
-    
-    # Optimización para máximo Sharpe ratio
-    result = minimize(objective, init_weights, method='SLSQP', constraints=cons, bounds=bounds)
-    return result.x
-
-# Función para hacer backtesting
-def backtest_portfolio(returns, weights):
-    portfolio_returns = np.dot(returns, weights)
-    return portfolio_returns.cumsum()  # Rendimiento acumulado
 
 # --- Streamlit UI ---
 st.title("Proyecto de Optimización de Portafolios")
@@ -111,17 +34,97 @@ with tabs[0]:
 # --- Selección de ETFs ---
 with tabs[1]:
     st.header("Selección de ETFs")
-    st.write("Selecciona 5 ETFs para formar un portafolio balanceado.")
     
-    # Listado de ETFs
-    etfs = ["LQD", "VWOB", "SPY", "EEM", "DBC"]
-    st.write("Los ETFs seleccionados son:")
-    st.write(etfs)
-    
-    # Cargar datos
-    data, returns = load_data(etfs, start_date="2010-01-01", end_date="2023-12-31")
-    st.write("Datos cargados correctamente.")
+    st.write("""
+    En esta sección se seleccionarán 5 ETFs con características variadas para construir un portafolio balanceado. 
+    Los ETFs cubren diferentes clases de activos, como renta fija, renta variable y materias primas, 
+    y están denominados en la misma divisa (USD). A continuación, se describen los ETFs seleccionados y sus características.
+    """)
 
+    # Función para cargar los datos de los ETFs (renombrada como ventana1)
+    def ventana1(etfs, start_date="2010-01-01"):
+        end_date = datetime.today().strftime('%Y-%m-%d')  # Fecha actual
+        data = yf.download(etfs, start=start_date, end=end_date)["Adj Close"]
+        returns = data.pct_change().dropna()
+        return data, returns
+
+    # Lista de ETFs seleccionados
+    etfs = {
+        "LQD": {"name": "iShares iBoxx $ Investment Grade Corporate Bond ETF", 
+                "type": "Renta Fija Desarrollada", 
+                "index": "iBoxx $ Liquid Investment Grade Index", 
+                "currency": "USD", 
+                "risk_metrics": {"Duration": 6.8, "Beta": 0.12}, 
+                "contributors": ["Apple", "Microsoft", "Amazon"], 
+                "style": "Investment Grade", 
+                "cost": 0.14},
+        "VWOB": {"name": "Vanguard Emerging Markets Government Bond ETF", 
+                 "type": "Renta Fija Emergente", 
+                 "index": "Bloomberg Barclays EM USD Govt 10-30 Year Bond Index", 
+                 "currency": "USD", 
+                 "risk_metrics": {"Duration": 8.4, "Beta": 0.75}, 
+                 "contributors": ["Brazil", "Russia", "India"], 
+                 "style": "Emerging Market", 
+                 "cost": 0.36},
+        "SPY": {"name": "SPDR S&P 500 ETF Trust", 
+                "type": "Renta Variable Desarrollada", 
+                "index": "S&P 500", 
+                "currency": "USD", 
+                "risk_metrics": {"Duration": "N/A", "Beta": 1.00}, 
+                "contributors": ["Apple", "Microsoft", "Tesla"], 
+                "style": "Large Cap, Growth", 
+                "cost": 0.09},
+        "EEM": {"name": "iShares MSCI Emerging Markets ETF", 
+                "type": "Renta Variable Emergente", 
+                "index": "MSCI Emerging Markets Index", 
+                "currency": "USD", 
+                "risk_metrics": {"Duration": "N/A", "Beta": 1.12}, 
+                "contributors": ["China", "Taiwan", "India"], 
+                "style": "Emerging Market", 
+                "cost": 0.68},
+        "DBC": {"name": "Invesco DB Commodity Index Tracking Fund", 
+                "type": "Materias Primas", 
+                "index": "DBIQ Optimum Yield Diversified Commodity Index", 
+                "currency": "USD", 
+                "risk_metrics": {"Duration": "N/A", "Beta": 0.80}, 
+                "contributors": ["Crude Oil", "Gold", "Copper"], 
+                "style": "Commodity", 
+                "cost": 0.89}
+    }
+
+    # Mostrar las características de cada ETF
+    for etf, details in etfs.items():
+        st.subheader(f"{details['name']} ({etf})")
+        st.write(f"**Tipo**: {details['type']}")
+        st.write(f"**Índice que sigue**: {details['index']}")
+        st.write(f"**Moneda de denominación**: {details['currency']}")
+        st.write(f"**Principales contribuyentes**: {', '.join(details['contributors'])}")
+        st.write(f"**Riesgo**: Duración = {details['risk_metrics']['Duration']} años, Beta = {details['risk_metrics']['Beta']}")
+        st.write(f"**Estilo**: {details['style']}")
+        st.write(f"**Costo de gestión anual**: {details['cost']}%")
+        
+        # Cargar los datos del ETF
+        data, returns = ventana1([etf], start_date="2010-01-01")
+        
+        # Último precio de cierre
+        last_close_price = data.iloc[-1][etf]
+        st.write(f"**Último precio de cierre de {etf}**: ${last_close_price:.2f}")
+        
+        # Crear gráfico interactivo de la serie de tiempo del ETF
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=data.index, y=data[etf], mode='lines', name=f"{etf} Precio Ajustado de Cierre"))
+        
+        # Configuración del gráfico
+        fig.update_layout(
+            title=f"Serie de Tiempo del ETF: {details['name']}",
+            xaxis_title='Fecha',
+            yaxis_title='Precio Ajustado de Cierre',
+            template='plotly_dark'
+        )
+        
+        # Mostrar gráfico interactivo
+        st.plotly_chart(fig)
+        
 # --- Estadísticas de Activos ---
 with tabs[2]:
     st.header("Estadísticas de Activos")
