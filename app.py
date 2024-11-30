@@ -105,10 +105,10 @@ def pagina_black_litterman():
     """)
     st.markdown("<p class='subsection'>Implementación y análisis usando el modelo de Black-Litterman.</p>", unsafe_allow_html=True)
 
-# Navegación entre páginas usando pestañas
+# Crear un conjunto de botones como pestañas
 tabs = ["Inicio", "Selección de ETFs", "Stats de los ETFs", "Portafolios Óptimos y Backtesting", "Modelo de Black-Litterman"]
 
-# Barra de pestañas superior
+# Muestra botones para las pestañas
 selected_tab = st.radio("", tabs, index=0, key="tabs", label_visibility="collapsed")
 
 # Mostrar el contenido correspondiente a la pestaña seleccionada
