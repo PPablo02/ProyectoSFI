@@ -259,14 +259,6 @@ with tabs[2]:
         # Redondear valores a 4 decimales
         resultados.loc[etf] = [round(value, 4) if not isinstance(value, str) else value for value in metrics]
 
-        # Convertir columnas que son porcentajes al formato de porcentaje
-        columnas_porcentajes = ["VaR (95%)", "VaR (97.5%)", "VaR (99%)",
-                        "CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)",
-                        "Drawdown Máximo", "Watermark Máximo", "Punto más Bajo del Drawdown"]
-
-        resultados[columnas_porcentajes] = resultados[columnas_porcentajes].apply(
-            lambda col: (col * 100).round(4).astype(str) + "%" if col.name in columnas_porcentajes else col)
-
     
     # Mostrar las métricas calculadas
     st.subheader("Métricas de Riesgo y Rendimiento de los ETFs")
