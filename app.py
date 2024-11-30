@@ -96,8 +96,18 @@ tabs = st.tabs(["Introducción", "Selección de ETFs", "Estadísticas de Activos
 # --- Introducción ---
 with tabs[0]:
     st.header("Introducción")
-    st.write("Este proyecto busca evaluar el rendimiento de un portafolio utilizando diferentes ETFs y técnicas de optimización.")
-
+    st.write("""
+    Este proyecto tiene como objetivo analizar y optimizar un portafolio utilizando ETFs en diferentes clases de activos, tales como renta fija, renta variable, y materias primas. A lo largo del proyecto, se evaluará el rendimiento de estos activos a través de diversas métricas financieras y técnicas de optimización de portafolios, como la optimización de mínima volatilidad y la maximización del Sharpe Ratio.
+    
+    Para lograr esto, se utilizarán datos históricos de rendimientos y se realizarán pruebas de backtesting para validar las estrategias propuestas. Además, se implementará el modelo de optimización Black-Litterman para ajustar los rendimientos esperados en función de perspectivas macroeconómicas.
+    
+    Los integrantes de este proyecto son:
+    - Emmanuel Reyes Hernández
+    - Adrián Fuentes Soriano
+    - Pablo Pineda Pineda
+    - Mariana Vigil Villegas
+    """)
+    
 # --- Selección de ETFs ---
 with tabs[1]:
     st.header("Selección de ETFs")
