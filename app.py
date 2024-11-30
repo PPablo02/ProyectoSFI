@@ -329,12 +329,12 @@ with tabs[2]:
     ax.legend(loc="best")
     st.pyplot(fig)
 
-    # Heatmap de la matriz de covarianzas entre ETFs
-    st.subheader("Mapa de Calor de la Matriz de Covarianzas entre ETFs")
-    cov_matrix = returns.cov()
+     # Heatmap de la matriz de correlaciones entre ETFs
+    st.subheader("Mapa de Calor de la Matriz de Correlaciones entre ETFs")
+    correlation_matrix = returns.corr()  # Matriz de correlaciones de los rendimientos diarios
     fig, ax = plt.subplots(figsize=(10, 6))
-    sns.heatmap(cov_matrix, annot=True, fmt=".4f", cmap="coolwarm", cbar=True, ax=ax)
-    ax.set_title("Matriz de Covarianzas entre ETFs")
+    sns.heatmap(correlation_matrix, annot=True, fmt=".2f", cmap="coolwarm", cbar=True, ax=ax)
+    ax.set_title("Matriz de Correlaciones entre los Rendimientos de los ETFs")
     st.pyplot(fig)
 
 
