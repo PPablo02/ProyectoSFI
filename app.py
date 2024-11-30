@@ -22,58 +22,52 @@ def ventana1(etfs, start_date="2010-01-01"):
     return data, returns
 
     # --- Funciones para el tab2 ---
+# --- Función para calcular métricas ---
+def calcular_metricas(returns):
+    media = returns.mean() * 100
+    sesgo = skew(returns)
+    curtosis = kurtosis(returns)
+    
+    var_95 = np.percentile(returns, 5) * 100
+    var_975 = np.percentile(returns, 2.5) * 100
+    var_99 = np.percentile(returns, 1) * 100
+    
+    cvar_95 = returns[returns <= np.percentile(returns, 5)].mean() * 100
+    cvar_975 = returns[returns <= np.percentile(returns, 2.5)].mean() * 100
+    cvar_99 = returns[returns <= np.percentile(returns, 1)].mean() * 100
+    
+    sharpe_ratio = media / (returns.std() * 100)
+    sortino_ratio = media / (returns[returns < 0].std() * 100)
+    
+    cumulative_returns = (returns + 1).cumprod() - 1
+    drawdown = cumulative_returns - cumulative_returns.cummax()
+    max_drawdown = drawdown.min() * 100
+    
+    watermark = cumulative_returns.cummax()
+    lowest_point = cumulative_returns.min() * 100
+    
+    return {
+        'Media (%)': round(media, 4),
+        'Sesgo': round(sesgo, 4),
+        'Curtosis': round(curtosis, 4),
+        'VaR (95%)': round(var_95, 4),
+        'VaR (97.5%)': round(var_975, 4),
+        'VaR (99%)': round(var_99, 4),
+        'CVaR (95%)': round(cvar_95, 4),
+        'CVaR (97.5%)': round(cvar_975, 4),
+        'CVaR (99%)': round(cvar_99, 4),
+        'Sharpe Ratio': round(sharpe_ratio, 4),
+        'Sortino Ratio': round(sortino_ratio, 4),
+        'Drawdown Máximo (%)': round(max_drawdown, 4),
+        'Punto más Bajo del Drawdown (%)': round(lowest_point, 4)
+    }
 
-# Función para cargar datos del tab2
-def ventana2(etfs, start_date="2010-01-01", end_date="2023-12-31"):
+# --- Función para cargar datos ---
+def ventana2(etfs, start_date="2010-01-01", end_date="2020-12-31"):
     data = yf.download(etfs, start=start_date, end=end_date)["Adj Close"]
     returns = data.pct_change().dropna()
     return data, returns
 
-# Funcion para calcular las métricas solicitadas
-def calcular_metricas(returns):
-    # Cálculos básicos
-    media = returns.mean()
-    sesgo = skew(returns)
-    curtosis = kurtosis(returns)
-    
-    # VaR y CVaR (Niveles de confianza al 95%, 97.5% y 99%)
-    var_95 = np.percentile(returns, 5)
-    var_975 = np.percentile(returns, 2.5)
-    var_99 = np.percentile(returns, 1)
-    
-    cvar_95 = returns[returns <= var_95].mean()
-    cvar_975 = returns[returns <= var_975].mean()
-    cvar_99 = returns[returns <= var_99].mean()
-    
-    # Sharpe y Sortino
-    sharpe_ratio = media / returns.std()
-    sortino_ratio = media / returns[returns < 0].std()
-    
-    # Drawdown
-    cumulative_returns = (returns + 1).cumprod() - 1
-    max_drawdown = (cumulative_returns - cumulative_returns.cummax()).min()
-    
-    # Watermark (máximo valor alcanzado y el punto más bajo de drawdown)
-    watermark = cumulative_returns.cummax()
-    lowest_point = cumulative_returns.min()
-    
-    # Resultados
-    return {
-        'Media': media,
-        'Sesgo': sesgo,
-        'Curtosis': curtosis,
-        'VaR (95%)': var_95,
-        'VaR (97.5%)': var_975,
-        'VaR (99%)': var_99,
-        'CVaR (95%)': cvar_95,
-        'CVaR (97.5%)': cvar_975,
-        'CVaR (99%)': cvar_99,
-        'Sharpe Ratio': sharpe_ratio,
-        'Sortino Ratio': sortino_ratio,
-        'Drawdown Máximo': max_drawdown,
-        'Watermark Máximo': watermark.iloc[-1],
-        'Punto más Bajo del Drawdown': lowest_point
-    }
 
 
 # --- Streamlit UI ---
@@ -235,97 +229,66 @@ with tabs[1]:
 
 # --- Tab 2: Cálculo de Estadísticas ---
 with tabs[2]:
-    st.header("Estadísticas de los ETF's")
-    
+    st.title("Estadísticas de los Activos")
+
     st.write("""
-    En esta sección, se calcularán varias métricas estadísticas de los 5 ETFs seleccionados. Los rendimientos diarios de cada ETF serán utilizados para calcular la media, el sesgo, la curtosis, el VaR (Value at Risk), el CVaR (Conditional Value at Risk), el Sharpe Ratio, el Sortino Ratio, y el Drawdown.
+    En esta sección, se calculan métricas clave como media, sesgo, curtosis, VaR, CVaR, Sharpe Ratio, Sortino Ratio, y Drawdown. 
+    Además, se muestran gráficos interactivos para explorar los rendimientos diarios, drawdowns y watermarks.
     """)
 
-    # Definir los ETFs seleccionados
+    # Selección de ETFs
     etfs = ["LQD", "VWOB", "SPY", "EEM", "DBC"]
-    data, returns = ventana2(etfs, start_date="2010-01-01", end_date="2023-12-31")
-    
-    # Crear un dataframe para almacenar los resultados de las métricas
-    resultados = pd.DataFrame(columns=["Media", "Sesgo", "Curtosis", "VaR (95%)", "VaR (97.5%)", "VaR (99%)",
-                                      "CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)", "Sharpe Ratio", "Sortino Ratio",
-                                      "Drawdown Máximo", "Watermark Máximo", "Punto más Bajo del Drawdown"], 
-                              index=etfs)
+    data, returns = ventana2(etfs)
 
-    # Crear un dataframe para almacenar los rendimientos diarios
-    rendimientos_diarios = pd.DataFrame(columns=etfs, index=returns.index)
-    rendimientos_diarios = returns
-    
-    # Calcular las métricas para cada ETF y llenar los dataframes
+    # Dataframes para resultados y rendimientos
+    resultados = pd.DataFrame(columns=[
+        "Media (%)", "Sesgo", "Curtosis", "VaR (95%)", "VaR (97.5%)", "VaR (99%)",
+        "CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)", "Sharpe Ratio", "Sortino Ratio",
+        "Drawdown Máximo (%)", "Punto más Bajo del Drawdown (%)"
+    ], index=etfs)
+
     for etf in etfs:
         resultados.loc[etf] = calcular_metricas(returns[etf])
-    
-    # Mostrar las métricas calculadas
-    st.subheader("Métricas de Riesgo y Rendimiento de los ETFs")
+
+    rendimientos_diarios = returns * 100
+    rendimientos_diarios = rendimientos_diarios.round(4)
+
+    # Mostrar las métricas en una tabla
+    st.subheader("Métricas de Riesgo y Rendimiento")
     st.write(resultados)
-    
-    # Mostrar los rendimientos diarios de los ETFs
-    st.subheader("Rendimientos Diarios de los ETFs")
+
+    # Mostrar los rendimientos diarios en una tabla
+    st.subheader("Rendimientos Diarios (%)")
     st.write(rendimientos_diarios)
-    
-    # Graficar los rendimientos acumulados de los ETFs
-    st.subheader("Gráfico de Rendimientos Acumulados de los ETFs")
-    cumulative_returns = (returns + 1).cumprod() - 1
-    
-    # Crear gráfico de los rendimientos acumulados
-    fig, ax = plt.subplots(figsize=(10, 6))
-    for etf in etfs:
-        ax.plot(cumulative_returns.index, cumulative_returns[etf], label=etf)
-    
-    ax.set_title("Rendimientos Acumulados de los ETFs (2010-2023)")
-    ax.set_xlabel("Fecha")
-    ax.set_ylabel("Rendimiento Acumulado")
-    ax.legend(loc="best")
-    st.pyplot(fig)
 
-    # Graficar la distribución de los rendimientos para cada ETF
-    st.subheader("Distribución de los Rendimientos Diarios de los ETFs")
-    fig, ax = plt.subplots(figsize=(10, 6))
+    # Graficar por separado los drawdowns y watermarks para cada ETF
     for etf in etfs:
-        ax.hist(returns[etf], bins=50, alpha=0.6, label=etf)
-    
-    ax.set_title("Distribución de los Rendimientos Diarios de los ETFs")
-    ax.set_xlabel("Rendimiento Diario")
-    ax.set_ylabel("Frecuencia")
-    ax.legend(loc="best")
-    st.pyplot(fig)
+        st.subheader(f"Gráficas Interactivas para {etf}")
 
-    # Graficar los Drawdowns
-    st.subheader("Drawdowns de los ETFs")
-    fig, ax = plt.subplots(figsize=(10, 6))
-    for etf in etfs:
+        # Gráfica de Drawdowns
         cumulative_returns = (returns[etf] + 1).cumprod() - 1
         drawdown = cumulative_returns - cumulative_returns.cummax()
-        ax.plot(drawdown.index, drawdown, label=etf)
-        
-        # Marcando el punto más bajo de cada Drawdown
-        lowest_point = drawdown.min()
-        ax.scatter(drawdown.idxmin(), lowest_point, color='red', label=f'Punto más Bajo: {lowest_point:.2%}')
-    
-    ax.set_title("Drawdowns de los ETFs")
-    ax.set_xlabel("Fecha")
-    ax.set_ylabel("Drawdown")
-    ax.legend(loc="best")
-    st.pyplot(fig)
+        drawdown_fig = px.line(drawdown, title=f"Drawdown de {etf}", labels={"index": "Fecha", "value": "Drawdown (%)"})
+        st.plotly_chart(drawdown_fig)
 
-    # Graficar los Watermarks
-    st.subheader("Watermarks de los ETFs")
-    fig, ax = plt.subplots(figsize=(10, 6))
-    for etf in etfs:
-        cumulative_returns = (returns[etf] + 1).cumprod() - 1
+        # Gráfica de Watermarks
         watermark = cumulative_returns.cummax()
-        ax.plot(watermark.index, watermark, label=f'Watermark {etf}')
-    
-    ax.set_title("Watermarks de los ETFs")
-    ax.set_xlabel("Fecha")
-    ax.set_ylabel("Watermark (Valor Máximo)")
-    ax.legend(loc="best")
-    st.pyplot(fig)
-    
+        watermark_fig = px.line(watermark, title=f"Watermark de {etf}", labels={"index": "Fecha", "value": "Watermark (%)"})
+        st.plotly_chart(watermark_fig)
+
+        # Gráfica de los rendimientos diarios
+        rendimientos_fig = px.line(rendimientos_diarios[etf], title=f"Rendimientos Diarios de {etf}", labels={"index": "Fecha", "value": "Rendimientos Diarios (%)"})
+        st.plotly_chart(rendimientos_fig)
+
+        # Histograma de rendimientos diarios
+        hist_fig = px.histogram(rendimientos_diarios[etf], title=f"Distribución de Rendimientos Diarios de {etf}", labels={"value": "Rendimientos (%)"}, nbins=50)
+        st.plotly_chart(hist_fig)
+
+    # Graficar todos los rendimientos diarios en una sola gráfica
+    st.subheader("Rendimientos Diarios de Todos los ETFs")
+    rendimientos_fig_all = px.line(rendimientos_diarios, title="Rendimientos Diarios de Todos los ETFs", labels={"index": "Fecha", "value": "Rendimientos Diarios (%)"})
+    st.plotly_chart(rendimientos_fig_all)
+
 # --- Portafolios Óptimos ---
 with tabs[3]:
      st.header("Portafolios Óptimos")
