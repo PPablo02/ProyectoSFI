@@ -237,34 +237,42 @@ with tabs[0]:
     """)
 
 # --- Selección de ETF's ---
-datos_2010_2023 = cargar_datos(tickers.keys(), "2010-01-01", "2023-01-01")
+datos_2010_2023 = cargar_datos(list(tickers.keys()), "2010-01-01", "2023-01-01")
 with tabs[1]:
     st.header("Selección de ETF's")
+
+    # Crear un DataFrame consolidado con las características de los ETFs
+    etf_caracteristicas = pd.DataFrame({
+        "Ticker": list(tickers.keys()),
+        "Nombre": [info["nombre"] for info in tickers.values()],
+        "Sector": [info["sector"] for info in tickers.values()],
+        "Categoría": [info["categoria"] for info in tickers.values()],
+        "Exposición": [info["exposicion"] for info in tickers.values()],
+        "Moneda": [info["moneda"] for info in tickers.values()],
+        "Beta": [info["beta"] for info in tickers.values()],
+        "Gastos": [info["gastos"] for info in tickers.values()],
+        "Rango 1 Año": [info["rango_1y"] for info in tickers.values()],
+        "Rendimiento YTD": [info["rendimiento_ytd"] for info in tickers.values()],
+        "Duración": [info["duracion"] for info in tickers.values()],
+    })
+
+    # Mostrar las características en Streamlit
+    st.subheader("Características de los ETFs Seleccionados")
+    st.dataframe(etf_caracteristicas)
+
+    # Mostrar la serie de tiempo de cada ETF
+    st.subheader("Series de Tiempo de los Precios de Cierre")
     for ticker, info in tickers.items():
-        st.subheader(f"{info['nombre']} ({ticker})")
-        st.write(f"### Descripción del ETF:")
-        st.write(info['descripcion'])
-        st.write(f"### Sector de Inversión:")
-        st.write(info['sector'])
-        st.write(f"### Categoría del ETF:")
-        st.write(info['categoria'])
-        st.write(f"### Exposición del ETF:")
-        st.write(info['exposicion'])
-        st.write(f"### Moneda de Denominación:")
-        st.write(info['moneda'])
-        st.write(f"### Beta del ETF:")
-        st.write(info['beta'])
-        st.write(f"### Costos (Expense Ratio):")
-        st.write(info['gastos'])
-        st.write(f"### Rango de Precio (1 Año):")
-        st.write(info['rango_1y'])
-        st.write(f"### Rendimiento YTD (Año hasta la fecha):")
-        st.write(info['rendimiento_ytd'])
-        st.write(f"### Duración del ETF:")
-        st.write(info['duracion'])
-        st.write("### Principales Contribuidores (Top Holdings):")
-        st.write(pd.DataFrame(info['top_holdings']))
-        fig = px.line(datos_2010_2023[ticker], x=datos_2010_2023[ticker].index, y=datos_2010_2023[ticker]['Close'].values.flatten(), title=f"Precio de Cierre - {info['nombre']}")
+        st.write(f"### {info['nombre']} ({ticker})")
+        
+        # Graficar la serie de tiempo del precio de cierre
+        fig = px.line(
+            datos_2010_2023[ticker], 
+            x=datos_2010_2023[ticker].index, 
+            y="Close", 
+            title=f"Serie de Tiempo - {info['nombre']}",
+            labels={"Close": "Precio de Cierre", "index": "Fecha"}
+        )
         st.plotly_chart(fig)
 
 # --- Estadísticas de los ETF's ---
