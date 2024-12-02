@@ -280,8 +280,12 @@ with tabs[2]:
 # --- Portafolios Óptimos ---
 with tabs[3]:
     st.header("Portafolios Óptimos (2010-2020)")
-    datos_2010_2020 = cargar_datos(tickers.keys(), "2010-01-01", "2020-01-01")
+
+    # Descargar datos históricos para el periodo 2010-2020
+    datos_2010_2020 = cargar_datos(list(tickers.keys()), "2010-01-01", "2020-01-01")
     retornos_2010_2020 = pd.DataFrame({k: v["Retornos"] for k, v in datos_2010_2020.items()}).dropna()
+
+    # 1. Portafolio de Mínima Volatilidad
     st.subheader("Portafolio de Mínima Volatilidad")
     pesos_min_vol = optimizar_portafolio_markowitz(retornos_2010_2020, metodo="min_vol")
     st.write("Pesos del Portafolio de Mínima Volatilidad:")
@@ -290,12 +294,27 @@ with tabs[3]:
     fig_min_vol = px.bar(x=list(tickers.keys()), y=pesos_min_vol, title="Pesos - Mínima Volatilidad")
     st.plotly_chart(fig_min_vol)
 
+    # 2. Portafolio de Máximo Sharpe Ratio
+    st.subheader("Portafolio de Máximo Sharpe Ratio")
+    pesos_sharpe = optimizar_portafolio_markowitz(retornos_2010_2020, metodo="sharpe")
+    st.write("Pesos del Portafolio de Máximo Sharpe Ratio:")
+    for ticker, peso in zip(tickers.keys(), pesos_sharpe):
+        st.write(f"{ticker}: {peso:.2%}")
+    fig_sharpe = px.bar(x=list(tickers.keys()), y=pesos_sharpe, title="Pesos - Máximo Sharpe Ratio")
+    st.plotly_chart(fig_sharpe)
+
 # --- Backtesting ---
 with tabs[4]:
     st.header("Backtesting (2021-2023)")
-    datos_2021_2023 = cargar_datos(tickers.keys(), "2021-01-01", "2023-01-01")
+
+    # Descargar datos históricos para el periodo 2021-2023
+    datos_2021_2023 = cargar_datos(list(tickers.keys()), "2021-01-01", "2023-01-01")
     retornos_2021_2023 = pd.DataFrame({k: v["Retornos"] for k, v in datos_2021_2023.items()}).dropna()
+
+    # Crear DataFrame para guardar los rendimientos acumulados de cada portafolio
     rendimientos_acumulados = pd.DataFrame(index=retornos_2021_2023.index)
+
+    # Calcular rendimientos acumulados para cada portafolio
     st.subheader("Rendimientos Acumulados de los Portafolios")
     for nombre, pesos in [
         ("Mínima Volatilidad", pesos_min_vol),
@@ -306,6 +325,8 @@ with tabs[4]:
         rendimientos_acumulados[nombre] = rendimientos.cumsum()
         st.write(f"Rendimientos Acumulados - {nombre}")
         st.line_chart(rendimientos.cumsum())
+
+    # Graficar todos los portafolios en una sola gráfica
     fig_rendimientos = px.line(
         rendimientos_acumulados,
         title="Rendimientos Acumulados - Comparación de Portafolios",
