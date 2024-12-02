@@ -20,6 +20,9 @@ def cargar_datos(tickers, inicio, fin):
         datos[ticker] = df
     return datos
 
+# --- Al llamar la función, convertir dict_keys a lista ---
+tickers = list(tickers.keys())  # Convertir a lista
+datos_2010_2023 = cargar_datos(tickers, "2010-01-01", "2023-01-01")
 def obtener_informacion_etf(ticker):
     """Obtiene información detallada del ETF desde Yahoo Finance."""
     etf = yf.Ticker(ticker)
