@@ -74,7 +74,7 @@ def ventana2(etfs, start_date="2010-01-01", end_date="2023-12-31"):
 st.title("Proyecto de Optimización de Portafolios")
 
 # Crear tabs
-tabs = st.tabs(["Introducción", "Selección de ETF's", "Estadísticas de los ETF's", "Portafolios Óptimos", "Backtesting", "Modelo Black-Litterman"])
+tabs = st.tabs(["Introducción", "Selección de ETF's", "Estadísticas de los ETF's", "Portafolios Óptimos y Backtesting", "Modelo Black-Litterman"])
 
 # --- Introducción ---
 with tabs[0]:
@@ -178,13 +178,13 @@ with tabs[1]:
 
 # --- Estadísticas de los ETF's ---
 with tabs[2]:
-    st.header("Estadísticas de los ETF's")
-    
-    # Cargar los ETFs seleccionados
-    selected_etfs = ["LQD", "VWOB", "SPY", "EEM", "DBC"]
-    data, returns = ventana1(selected_etfs)
-    
-    # Mostrar métricas
-    st.write("### Métricas estadísticas de los ETFs seleccionados")
-    metrics = calcular_metricas(returns)
-    st.write(pd.DataFrame(metrics, index=["Valor"]))
+   
+# --- Estadísticas de los ETF's ---
+with tabs[3]:
+    st.header("Portafolios Óptimos y Backtesting")
+
+# --- Estadísticas de los ETF's ---
+with tabs[4]:
+    st.header("Modelo Black-Litterman")
+
+
