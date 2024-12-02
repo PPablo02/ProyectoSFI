@@ -38,6 +38,23 @@ def obtener_informacion_etf(ticker):
         "beta": info.get('beta', 'No disponible')
     }
 
+def calcular_metricas(df, nivel_VaR=[0.95, 0.975, 0.99]):
+    """Calcula métricas estadísticas clave, incluyendo VaR a diferentes niveles."""
+    retornos = df['Retornos'].dropna()
+    metrics = {
+        "Media (%)": np.mean(retornos) * 100,
+        "Volatilidad (%)": np.std(retornos) * 100,
+        "Sesgo": skew(retornos),
+        "Curtosis": kurtosis(retornos),
+        "Beta": df['Retornos'].cov(df['Retornos']) / df['Retornos'].var(),  # Beta simple
+        "VaR 95%": np.percentile(retornos, 5),
+        "VaR 97.5%": np.percentile(retornos, 2.5),
+        "VaR 99%": np.percentile(retornos, 1),
+        "CVaR 95%": retornos[retornos <= np.percentile(retornos, 5)].mean(),
+        "Sharpe Ratio": np.mean(retornos) / np.std(retornos)
+    }
+    return pd.DataFrame(metrics, index=["Valor"]).T
+
 def optimizar_portafolio(retornos, metodo="min_vol", objetivo=None):
     """Optimiza el portafolio basado en mínima volatilidad, Sharpe Ratio o un rendimiento objetivo."""
     media = retornos.mean()
@@ -64,6 +81,13 @@ def optimizar_portafolio(retornos, metodo="min_vol", objetivo=None):
     limites = [(0, 1) for _ in range(n)]
     resultado = minimize(objetivo_funcion, w_inicial, constraints=restricciones, bounds=limites)
     return resultado.x
+
+def calcular_drawdown(df):
+    """Calcula el drawdown y watermark de una serie de precios."""
+    roll_max = df['Close'].cummax()
+    daily_drawdown = df['Close'] / roll_max - 1.0
+    watermark = df['Close'] / roll_max
+    return daily_drawdown, watermark
 
 # --- Configuración de Streamlit ---
 st.title("Proyecto de Optimización de Portafolios")
@@ -136,7 +160,7 @@ with tabs[1]:
         st.write(info_etf['beta'])
         
         # Graficar el rendimiento histórico
-        fig = px.line(datos_2010_2023[ticker], x=datos_2010_2023[ticker].index, y="Close", title=f"Precio de Cierre - {ticker}")
+        fig = px.line(datos_2010_2023[ticker], x=datos_2010_2023[ticker].index, y=datos_2010_2023[ticker]['Close'].values.flatten(), title=f"Precio de Cierre - {ticker}")
         st.plotly_chart(fig)
 
         # Calcular y graficar Drawdown y Watermark
