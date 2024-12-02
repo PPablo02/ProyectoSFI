@@ -18,10 +18,10 @@ tickers = {
 
 # --- Funciones Auxiliares ---
 @st.cache_data
-def cargar_datos(tickers, inicio, fin):
+def cargar_datos(_tickers, inicio, fin):
     """Descarga datos históricos para una lista de tickers desde Yahoo Finance."""
     datos = {}
-    for ticker in tickers:
+    for ticker in _tickers:
         df = yf.download(ticker, start=inicio, end=fin)
         df['Retornos'] = df['Close'].pct_change()
         datos[ticker] = df
