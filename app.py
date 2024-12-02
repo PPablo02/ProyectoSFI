@@ -232,13 +232,13 @@ with tabs[1]:
     # Mostrar gráfico combinado
     st.plotly_chart(fig_all)
 
-# --- Tab 2: Cálculo de Estadísticas ---
+
+# --- Estadísticas de los ETF's ---
 with tabs[2]:
-   with tabs[2]:
-    st.header("Estadísticas de los Activos")
+    st.header("Estadísticas de los ETF's")
     
     st.write("""
-    En esta sección, se calcularán varias métricas estadísticas de los 5 ETFs seleccionados. Los rendimientos diarios de cada ETF serán utilizados para calcular la media, el sesgo, la curtosis, el VaR (Value at Risk), el CVaR (Conditional Value at Risk), el Sharpe Ratio, el Sortino Ratio, y el Drawdown.
+    En esta sección, se calcularán varias métricas estadísticas de los 5 ETFs seleccionados. Los rendimientos diarios de cada ETF serán utilizados para calcular la media, el VaR (Value at Risk), el CVaR (Conditional Value at Risk), el Drawdown y el Watermark.
     """)
 
     # Definir los ETFs seleccionados
@@ -246,19 +246,27 @@ with tabs[2]:
     data, returns = ventana2(etfs, start_date="2010-01-01", end_date=datetime.now().strftime("%Y-%m-%d"))
     
     # Crear un dataframe para almacenar los resultados de las métricas
-    resultados = pd.DataFrame(columns=["Media (%)", "Sesgo", "Curtosis", "VaR (95%)", "VaR (97.5%)", "VaR (99%)",
-                                       "CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)", "Sharpe Ratio", "Sortino Ratio",
-                                       "Drawdown Máximo", "Watermark Máximo"], index=etfs)
+    resultados = pd.DataFrame(columns=["Media (%)", "VaR (95%)", "VaR (97.5%)", "VaR (99%)",
+                                       "CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)",
+                                       "Drawdown Máximo (%)", "Watermark Máximo (%)"], 
+                              index=etfs)
 
     # Calcular las métricas para cada ETF
     for etf in etfs:
-        resultados.loc[etf] = calcular_metricas(returns[etf])
+        metrics = calcular_metricas(returns[etf])
+        # Guardar las métricas en el DataFrame
+        resultados.loc[etf, "Media (%)"] = metrics["mean"] * 100
+        resultados.loc[etf, ["VaR (95%)", "VaR (97.5%)", "VaR (99%)"]] = [metrics[f"var_{p}"] * 100 for p in [95, 97.5, 99]]
+        resultados.loc[etf, ["CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)"]] = [metrics[f"cvar_{p}"] * 100 for p in [95, 97.5, 99]]
+        resultados.loc[etf, "Drawdown Máximo (%)"] = metrics["max_drawdown"] * 100
+        resultados.loc[etf, "Watermark Máximo (%)"] = metrics["max_watermark"] * 100
     
-    # Redondear valores y formatear Media en porcentaje
-    resultados["Media (%)"] = (resultados["Media (%)"] * 100).round(2)
+    # Redondear las métricas
+    resultados = resultados.round(2)
+
+    # Convertir valores a formato porcentaje concatenado con "%"
     for col in resultados.columns:
-        if col not in ["Media (%)"]:
-            resultados[col] = resultados[col].round(4)
+        resultados[col] = resultados[col].apply(lambda x: f"{x:.2f}%" if not pd.isna(x) else "N/A")
     
     # Mostrar la tabla de métricas
     st.subheader("Métricas de Riesgo y Rendimiento de los ETFs")
@@ -328,6 +336,7 @@ with tabs[2]:
         labels={"color": "Correlación"}, template="plotly_white", color_continuous_scale=px.colors.sequential.Viridis
     )
     st.plotly_chart(fig_heatmap)
+
 
 # --- Portafolios Óptimos ---
 with tabs[3]:
