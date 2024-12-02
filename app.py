@@ -3,18 +3,12 @@ import streamlit as st
 import yfinance as yf
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.express as px
-import seaborn as sns
 from scipy.stats import skew, kurtosis
-from scipy.optimize import minimize
 from datetime import datetime
 
-
 # --- Funciones auxiliares ---
-
-    # --- Funciones para el tab1 ---
 
 # Función para cargar los datos de los ETFs del tab1
 def ventana1(etfs, start_date="2010-01-01"):
@@ -23,7 +17,7 @@ def ventana1(etfs, start_date="2010-01-01"):
     returns = data.pct_change().dropna()
     return data, returns
 
-    # --- Funciones para el tab2 ---
+# --- Funciones para el tab2 ---
 
 def calcular_metricas(returns):
     # Cálculos básicos
@@ -96,7 +90,7 @@ with tabs[0]:
     - Pablo Pineda Pineda
     - Mariana Vigil Villegas
     """)
-    
+
 # --- Selección de ETFs ---
 with tabs[1]:
     st.header("Selección de ETF's")
@@ -107,7 +101,6 @@ with tabs[1]:
     y están denominados en la misma divisa (USD). A continuación, se describen los ETFs seleccionados y sus características.
     """)
 
-    
     # Lista de ETFs seleccionados con atributos
     etfs = {
         "LQD": {"nombre": "iShares iBoxx $ Investment Grade Corporate Bond ETF", 
@@ -163,191 +156,35 @@ with tabs[1]:
                 "índice": "DBIQ Optimum Yield Diversified Commodity Index", 
                 "moneda": "USD", 
                 "métricas_riesgo": {"Duración": "N/A", "Beta": 0.80, "Volatilidad": 18.0, "Drawdown Máximo": 30.0}, 
-                "principales_contribuidores": ["Petróleo Crudo", "Oro", "Cobre"], 
-                "países_invertidos": "Global",
-                "estilo": "Comodities", 
-                "grado_inversión": "Bajo", 
-                "costo": 0.89,
-                "exposición": "Comodities y materias primas como petróleo, oro, cobre",
-                "url": "https://www.invesco.com/portal/site/us/etfs/dbc"}
+                "principales_contribuidores": ["Petróleo", "Oro", "Cobre"], 
+                "países_invertidos": "Diversos", 
+                "estilo": "Diversificación de Materias Primas", 
+                "grado_inversión": "N/A", 
+                "costo": 0.79,
+                "exposición": "Diversificación en commodities",
+                "url": "https://www.invesco.com/portal/site/us/investors/etfs/product-detail?productId=DBC"}
     }
 
-    # Mostrar las características de cada ETF
-    for etf, detalles in etfs.items():
-        st.subheader(f"{detalles['nombre']} ({etf})")
-        
-        st.write(f"**Tipo**: {detalles['tipo']}")
-        st.write(f"**Índice que sigue**: {detalles['índice']}")
-        st.write(f"**Moneda de denominación**: {detalles['moneda']}")
-        st.write(f"**Principales contribuyentes**: {', '.join(detalles['principales_contribuidores'])}")
-        st.write(f"**País(es) donde invierte**: {detalles['países_invertidos']}")
-        st.write(f"**Exposición**: {detalles['exposición']}")
-        st.write(f"**Riesgo**: Duración = {detalles['métricas_riesgo']['Duración']} años, Beta = {detalles['métricas_riesgo']['Beta']}, Volatilidad = {detalles['métricas_riesgo']['Volatilidad']}%, Drawdown Máximo = {detalles['métricas_riesgo']['Drawdown Máximo']}%")
-        st.write(f"**Estilo**: {detalles['estilo']}")
-        st.write(f"**Grado de inversión**: {detalles['grado_inversión']}")
-        st.write(f"**Costo de gestión anual**: {detalles['costo']}%")
-        
-        # Cargar los datos del ETF
-        data, returns = ventana1([etf], start_date="2010-01-01")
-        
-        # Último precio de cierre
-        ultimo_precio_cierre = data.iloc[-1][etf]
-        st.write(f"**Último precio de cierre de {etf}**: ${ultimo_precio_cierre:.2f}")
-        
-        # Crear gráfico interactivo de la serie de tiempo del ETF
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=data.index, y=data[etf], mode='lines', name=f"{etf} Precio Ajustado de Cierre"))
-        
-        # Configuración del gráfico
-        fig.update_layout(
-            title=f"Serie de Tiempo del ETF: {detalles['nombre']}",
-            xaxis_title='Fecha',
-            yaxis_title='Precio Ajustado de Cierre',
-            template='plotly_dark'
-        )
-        
-        # Mostrar gráfico interactivo
-        st.plotly_chart(fig)
-        
-        # Enlace para más detalles del ETF
-        st.markdown(f"[Más detalles sobre este ETF]({detalles['url']})")
-
-    # --- Mostrar todas las series de tiempo en una sola gráfica ---
-    st.subheader("Serie de Tiempo Combinada de Todos los ETFs")
-    
-    # Crear gráfico con todas las series de tiempo
-    fig_all = go.Figure()
-
-    for etf, detalles in etfs.items():
-        data, returns = ventana1([etf], start_date="2010-01-01")
-        fig_all.add_trace(go.Scatter(x=data.index, y=data[etf], mode='lines', name=detalles['nombre']))
-    
-    fig_all.update_layout(
-        title="Serie de Tiempo Combinada de Todos los ETF's",
-        xaxis_title='Fecha',
-        yaxis_title='Precio Ajustado de Cierre',
-        template='plotly_dark'
-    )
-
-    # Mostrar gráfico combinado
-    st.plotly_chart(fig_all)
-    
-# --- Streamlit UI ---
-st.title("Proyecto de Optimización de Portafolios")
-
-# Crear tabs
-tabs = st.tabs(["Introducción", "Selección de ETF's", "Estadísticas de los ETF's", "Portafolios Óptimos", "Backtesting", "Modelo Black-Litterman"])
-
-# --- Introducción ---
-with tabs[0]:
-    st.header("Introducción")
-    st.write(""" 
-    Este proyecto tiene como objetivo analizar y optimizar un portafolio utilizando ETFs en diferentes clases de activos, tales como renta fija, renta variable, y materias primas. A lo largo del proyecto, se evaluará el rendimiento de estos activos a través de diversas métricas financieras y técnicas de optimización de portafolios, como la optimización de mínima volatilidad y la maximización del Sharpe Ratio.
-    
-    Para lograr esto, se utilizarán datos históricos de rendimientos y se realizarán pruebas de backtesting para validar las estrategias propuestas. Además, se implementará el modelo de optimización Black-Litterman para ajustar los rendimientos esperados en función de perspectivas macroeconómicas.
-    
-    Los integrantes de este proyecto son:
-    - Emmanuel Reyes Hernández
-    - Adrián Fuentes Soriano
-    - Pablo Pineda Pineda
-    - Mariana Vigil Villegas
-    """)
+    # Mostrar información de los ETFs
+    for etf, data in etfs.items():
+        st.write(f"**{data['nombre']}**")
+        st.write(f"- Tipo: {data['tipo']}")
+        st.write(f"- Índice: {data['índice']}")
+        st.write(f"- Moneda: {data['moneda']}")
+        st.write(f"- Costo: {data['costo']}%")
+        st.write(f"- Exposición: {data['exposición']}")
+        st.write(f"- Grado de Inversión: {data['grado_inversión']}")
+        st.write(f"- URL: [{data['url']}]({data['url']})")
 
 # --- Estadísticas de los ETF's ---
 with tabs[2]:
-    st.header("Estadísticas de los Activos")
+    st.header("Estadísticas de los ETF's")
     
-    st.write("""
-    En esta sección, se calcularán varias métricas estadísticas de los 5 ETFs seleccionados. Los rendimientos diarios de cada ETF serán utilizados para calcular la media, el sesgo, la curtosis, el VaR (Value at Risk), el CVaR (Conditional Value at Risk), el Sharpe Ratio, el Sortino Ratio, y el Drawdown.
-    """)
-
-    # Definir los ETFs seleccionados
-    etfs = ["LQD", "VWOB", "SPY", "EEM", "DBC"]
-    data, returns = ventana2(etfs, start_date="2010-01-01", end_date=datetime.now().strftime("%Y-%m-%d"))
+    # Cargar los ETFs seleccionados
+    selected_etfs = ["LQD", "VWOB", "SPY", "EEM", "DBC"]
+    data, returns = ventana1(selected_etfs)
     
-    # Crear un dataframe para almacenar los resultados de las métricas
-    resultados = pd.DataFrame(columns=[
-        "Media (%)", "Sesgo", "Curtosis", "VaR (95%)", "VaR (97.5%)", "VaR (99%)",
-        "CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)", "Drawdown Máximo (%)", "Watermark Máximo (%)"
-    ], index=etfs)
-
-    # Calcular las métricas para cada ETF y llenar los dataframes
-    for etf in etfs:
-        metrics = calcular_metricas(returns[etf])
-        resultados.loc[etf, "Media (%)"] = metrics["Media"] * 100 if metrics["Media"] is not None else None
-        resultados.loc[etf, ["VaR (95%)", "VaR (97.5%)", "VaR (99%)"]] = [
-            metrics[f"VaR (95%)"] * 100 if metrics[f"VaR (95%)"] is not None else None, 
-            metrics[f"VaR (97.5%)"] * 100 if metrics[f"VaR (97.5%)"] is not None else None,
-            metrics[f"VaR (99%)"] * 100 if metrics[f"VaR (99%)"] is not None else None
-        ]
-        resultados.loc[etf, ["CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)"]] = [
-            metrics[f"CVaR (95%)"] * 100 if metrics[f"CVaR (95%)"] is not None else None, 
-            metrics[f"CVaR (97.5%)"] * 100 if metrics[f"CVaR (97.5%)"] is not None else None, 
-            metrics[f"CVaR (99%)"] * 100 if metrics[f"CVaR (99%)"] is not None else None
-        ]
-        resultados.loc[etf, "Drawdown Máximo (%)"] = metrics["Drawdown Máximo"] * 100 if metrics["Drawdown Máximo"] is not None else None
-        resultados.loc[etf, "Watermark Máximo (%)"] = metrics["Watermark Máximo"] * 100 if metrics["Watermark Máximo"] is not None else None
-
-    # Redondear las métricas en el DataFrame
-    resultados = resultados.round(2)
-
-    # Mostrar las métricas calculadas
-    st.subheader("Métricas de Riesgo y Rendimiento de los ETFs")
-    st.dataframe(resultados)
-
-    # Visualización ETF por ETF
-    for etf in etfs:
-        st.subheader(f"Análisis del ETF: {etf}")
-        
-        # Rendimientos acumulados
-        cumulative_returns = (returns[etf] + 1).cumprod() - 1
-        
-        # Drawdown
-        drawdown = cumulative_returns - cumulative_returns.cummax()
-        
-        # Watermark
-        watermark = cumulative_returns.cummax()
-        
-        # Gráfica: Distribución de rendimientos
-        st.write(f"Distribución de Rendimientos Diarios de {etf}")
-        fig_dist = px.histogram(returns[etf], nbins=50, title=f"Distribución de Rendimientos Diarios ({etf})",
-                                labels={"value": "Rendimiento Diario"}, template="plotly_white")
-        st.plotly_chart(fig_dist)
-        
-        # Gráfica: Rendimiento acumulado
-        st.write(f"Rendimiento Acumulado de {etf}")
-        fig_cum = px.line(cumulative_returns, title=f"Rendimiento Acumulado ({etf})",
-                          labels={"index": "Fecha", "value": "Rendimiento Acumulado"}, template="plotly_white")
-        st.plotly_chart(fig_cum)
-        
-        # Gráfica: Drawdown
-        st.write(f"Drawdown de {etf}")
-        fig_dd = px.line(drawdown, title=f"Drawdown ({etf})",
-                         labels={"index": "Fecha", "value": "Drawdown"}, template="plotly_white")
-        st.plotly_chart(fig_dd)
-
-    # Calcular la matriz de correlaciones entre los rendimientos diarios
-    st.subheader("Mapa de Calor de la Matriz de Correlaciones entre los Rendimientos Diarios")
-    correlation_matrix = returns.corr()  # Asegúrate de que returns esté definido correctamente
-    fig_heatmap = px.imshow(
-        correlation_matrix, 
-        text_auto=True, 
-        title="Matriz de Correlaciones entre los Rendimientos Diarios",
-        labels={"color": "Correlación"}, 
-        template="plotly_white", 
-        color_continuous_scale=px.colors.sequential.Viridis  # Escala de colores compatible
-    )
-    st.plotly_chart(fig_heatmap)
-
-# --- Portafolios Óptimos ---
-with tabs[3]:
-     st.header("Portafolios Óptimos")
-    
-# --- Backtesting ---
-with tabs[4]:
-     st.header("Backtesting")
-    
-# --- Modelo Black-Litterman ---
-with tabs[5]:
-     st.header("Modelo Black-Litterman")
-    
+    # Mostrar métricas
+    st.write("### Métricas estadísticas de los ETFs seleccionados")
+    metrics = calcular_metricas(returns)
+    st.write(pd.DataFrame(metrics, index=["Valor"]))
