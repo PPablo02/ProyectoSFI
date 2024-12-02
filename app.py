@@ -20,9 +20,6 @@ def cargar_datos(tickers, inicio, fin):
         datos[ticker] = df
     return datos
 
-# --- Al llamar la función, convertir dict_keys a lista ---
-tickers = list(tickers.keys())  # Convertir a lista
-datos_2010_2023 = cargar_datos(tickers, "2010-01-01", "2023-01-01")
 def obtener_informacion_etf(ticker):
     """Obtiene información detallada del ETF desde Yahoo Finance."""
     etf = yf.Ticker(ticker)
@@ -40,23 +37,6 @@ def obtener_informacion_etf(ticker):
         "moneda": info.get('currency', 'No disponible'),
         "beta": info.get('beta', 'No disponible')
     }
-
-def calcular_metricas(df, nivel_VaR=[0.95, 0.975, 0.99]):
-    """Calcula métricas estadísticas clave, incluyendo VaR a diferentes niveles."""
-    retornos = df['Retornos'].dropna()
-    metrics = {
-        "Media (%)": np.mean(retornos) * 100,
-        "Volatilidad (%)": np.std(retornos) * 100,
-        "Sesgo": skew(retornos),
-        "Curtosis": kurtosis(retornos),
-        "Beta": df['Retornos'].cov(df['Retornos']) / df['Retornos'].var(),  # Beta simple
-        "VaR 95%": np.percentile(retornos, 5),
-        "VaR 97.5%": np.percentile(retornos, 2.5),
-        "VaR 99%": np.percentile(retornos, 1),
-        "CVaR 95%": retornos[retornos <= np.percentile(retornos, 5)].mean(),
-        "Sharpe Ratio": np.mean(retornos) / np.std(retornos)
-    }
-    return pd.DataFrame(metrics, index=["Valor"]).T
 
 def optimizar_portafolio(retornos, metodo="min_vol", objetivo=None):
     """Optimiza el portafolio basado en mínima volatilidad, Sharpe Ratio o un rendimiento objetivo."""
@@ -85,13 +65,6 @@ def optimizar_portafolio(retornos, metodo="min_vol", objetivo=None):
     resultado = minimize(objetivo_funcion, w_inicial, constraints=restricciones, bounds=limites)
     return resultado.x
 
-def calcular_drawdown(df):
-    """Calcula el drawdown y watermark de una serie de precios."""
-    roll_max = df['Close'].cummax()
-    daily_drawdown = df['Close'] / roll_max - 1.0
-    watermark = df['Close'] / roll_max
-    return daily_drawdown, watermark
-
 # --- Configuración de Streamlit ---
 st.title("Proyecto de Optimización de Portafolios")
 
@@ -102,15 +75,14 @@ tabs = st.tabs(["Introducción", "Selección de ETF's", "Estadísticas de los ET
 with tabs[0]:
     st.header("Introducción")
     st.write("""
-    Este proyecto tiene como objetivo analizar y optimizar un portafolio utilizando ETFs en diferentes clases de activos, tales como renta fija, renta variable, y materias primas. A lo largo del proyecto, se evaluará el rendimiento de estos activos a través de diversas métricas financieras y técnicas de optimización de portafolios, como la optimización de mínima volatilidad y la maximización del Sharpe Ratio.
-
-    Para lograr esto, se utilizarán datos históricos de rendimientos y se realizarán pruebas de backtesting para validar las estrategias propuestas. Además, se implementará el modelo de optimización Black-Litterman para ajustar los rendimientos esperados en función de perspectivas macroeconómicas.
+    Este proyecto tiene como objetivo analizar y optimizar un portafolio utilizando ETFs en diferentes clases de activos.
     """)
 
 # --- Selección de ETF's ---
 with tabs[1]:
     st.header("Selección de ETF's")
-    
+
+    # Definir los tickers antes de usarlos
     tickers = {
         "TLT": "Bonos del Tesoro a Largo Plazo (Renta Fija Desarrollada)",
         "EMB": "Bonos Mercados Emergentes (Renta Fija Emergente)",
@@ -118,8 +90,14 @@ with tabs[1]:
         "EEM": "MSCI Mercados Emergentes (Renta Variable Emergente)",
         "GLD": "Oro Físico (Materias Primas)"
     }
-    datos_2010_2023 = cargar_datos(tickers.keys(), "2010-01-01", "2023-01-01")
 
+    # Convertir dict_keys a lista
+    tickers_lista = list(tickers.keys())
+    
+    # Descargar los datos de los ETFs
+    datos_2010_2023 = cargar_datos(tickers_lista, "2010-01-01", "2023-01-01")
+
+    # Mostrar información de cada ETF
     for ticker, descripcion in tickers.items():
         st.subheader(f"{ticker} - {descripcion}")
         
@@ -190,25 +168,25 @@ with tabs[2]:
 # --- Portafolios Óptimos ---
 with tabs[3]:
     st.header("Portafolios Óptimos (2010-2020)")
-    datos_2010_2020 = cargar_datos(tickers.keys(), "2010-01-01", "2020-01-01")
+    datos_2010_2020 = cargar_datos(tickers_lista, "2010-01-01", "2020-01-01")
     retornos_2010_2020 = pd.DataFrame({k: v["Retornos"] for k, v in datos_2010_2020.items()}).dropna()
 
     # 1. Mínima Volatilidad
     st.subheader("Portafolio de Mínima Volatilidad")
     pesos_min_vol = optimizar_portafolio(retornos_2010_2020, metodo="min_vol")
     st.write("Pesos Óptimos (Mínima Volatilidad):")
-    for ticker, peso in zip(tickers.keys(), pesos_min_vol):
+    for ticker, peso in zip(tickers_lista, pesos_min_vol):
         st.write(f"{ticker}: {peso:.2%}")
-    fig = px.bar(x=tickers.keys(), y=pesos_min_vol, title="Pesos - Mínima Volatilidad")
+    fig = px.bar(x=tickers_lista, y=pesos_min_vol, title="Pesos - Mínima Volatilidad")
     st.plotly_chart(fig)
 
     # 2. Máximo Sharpe Ratio
     st.subheader("Portafolio de Máximo Sharpe Ratio")
     pesos_sharpe = optimizar_portafolio(retornos_2010_2020, metodo="sharpe")
     st.write("Pesos Óptimos (Máximo Sharpe Ratio):")
-    for ticker, peso in zip(tickers.keys(), pesos_sharpe):
+    for ticker, peso in zip(tickers_lista, pesos_sharpe):
         st.write(f"{ticker}: {peso:.2%}")
-    fig = px.bar(x=tickers.keys(), y=pesos_sharpe, title="Pesos - Máximo Sharpe Ratio")
+    fig = px.bar(x=tickers_lista, y=pesos_sharpe, title="Pesos - Máximo Sharpe Ratio")
     st.plotly_chart(fig)
 
     # 3. Mínima Volatilidad con Rendimiento Objetivo
@@ -216,15 +194,15 @@ with tabs[3]:
     st.subheader("Portafolio de Mínima Volatilidad con Rendimiento Objetivo (10% Anual)")
     pesos_target = optimizar_portafolio(retornos_2010_2020, metodo="target", objetivo=rendimiento_objetivo)
     st.write("Pesos Óptimos (Rendimiento Objetivo):")
-    for ticker, peso in zip(tickers.keys(), pesos_target):
+    for ticker, peso in zip(tickers_lista, pesos_target):
         st.write(f"{ticker}: {peso:.2%}")
-    fig = px.bar(x=tickers.keys(), y=pesos_target, title="Pesos - Rendimiento Objetivo (10%)")
+    fig = px.bar(x=tickers_lista, y=pesos_target, title="Pesos - Rendimiento Objetivo (10%)")
     st.plotly_chart(fig)
 
 # --- Backtesting ---
 with tabs[4]:
     st.header("Backtesting (2021-2023)")
-    datos_2021_2023 = cargar_datos(tickers.keys(), "2021-01-01", "2023-01-01")
+    datos_2021_2023 = cargar_datos(tickers_lista, "2021-01-01", "2023-01-01")
     retornos_2021_2023 = pd.DataFrame({k: v["Retornos"] for k, v in datos_2021_2023.items()}).dropna()
 
     st.subheader("Rendimientos Acumulados de los Portafolios")
