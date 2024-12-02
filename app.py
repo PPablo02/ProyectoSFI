@@ -97,7 +97,6 @@ tickers = {
 }
 
 # --- Funciones Auxiliares ---
-@st.cache_data
 def cargar_datos(tickers, inicio, fin):
     """Descarga datos históricos para una lista de tickers desde Yahoo Finance."""
     datos = {}
