@@ -246,97 +246,76 @@ with tabs[2]:
     
     # Crear un dataframe para almacenar los resultados de las métricas
     resultados = pd.DataFrame(columns=["Media", "Sesgo", "Curtosis", "VaR (95%)", "VaR (97.5%)", "VaR (99%)",
-                                       "CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)", "Sharpe Ratio", "Sortino Ratio",
-                                       "Drawdown Máximo", "Watermark Máximo", "Punto más Bajo del Drawdown"], 
+                                      "CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)", "Sharpe Ratio", "Sortino Ratio",
+                                      "Drawdown Máximo", "Watermark Máximo", "Punto más Bajo del Drawdown"], 
                               index=etfs)
 
-    # Crear un dataframe para almacenar los rendimientos diarios
-    rendimientos_diarios = returns
-    
     # Calcular las métricas para cada ETF y llenar los dataframes
     for etf in etfs:
-        metrics = calcular_metricas(returns[etf])
-        # Redondear valores a 4 decimales
-        resultados.loc[etf] = [round(value, 4) if not isinstance(value, str) else value for value in metrics]
-
+        resultados.loc[etf] = calcular_metricas(returns[etf])
+    
+    # Redondear las métricas en el DataFrame
+    resultados = resultados.astype(float).round(4)
+    
+    # Convertir porcentajes al formato de porcentaje
+    resultados[["Media", "VaR (95%)", "VaR (97.5%)", "VaR (99%)", "CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)",
+                "Drawdown Máximo", "Watermark Máximo", "Punto más Bajo del Drawdown"]] *= 100
+    resultados = resultados.applymap(lambda x: f"{x:.2f}%" if isinstance(x, (float, int)) else x)
     
     # Mostrar las métricas calculadas
     st.subheader("Métricas de Riesgo y Rendimiento de los ETFs")
     st.write(resultados)
-
-    # Mostrar los rendimientos diarios de los ETFs redondeados a 4 decimales
-    st.subheader("Rendimientos Diarios de los ETFs")
-    st.write(rendimientos_diarios.round(4))
-
-    # Graficar por separado los rendimientos acumulados de cada ETF
-    st.subheader("Rendimientos Acumulados (Por ETF)")
+    
+    # Visualización ETF por ETF
     for etf in etfs:
+        st.subheader(f"Análisis del ETF: {etf}")
+        
+        # Rendimientos acumulados
         cumulative_returns = (returns[etf] + 1).cumprod() - 1
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(cumulative_returns.index, cumulative_returns, label=etf, color="blue")
-        ax.set_title(f"Rendimientos Acumulados de {etf} (2010-2023)")
-        ax.set_xlabel("Fecha")
-        ax.set_ylabel("Rendimiento Acumulado")
-        ax.legend(loc="best")
-        st.pyplot(fig)
-
-    # Graficar la distribución de los rendimientos para cada ETF
-    st.subheader("Distribución de los Rendimientos Diarios (Por ETF)")
-    for etf in etfs:
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.hist(returns[etf], bins=50, alpha=0.7, color="green", label=etf)
-        ax.set_title(f"Distribución de los Rendimientos Diarios de {etf}")
-        ax.set_xlabel("Rendimiento Diario")
-        ax.set_ylabel("Frecuencia")
-        ax.legend(loc="best")
-        st.pyplot(fig)
-
-    # Graficar los Watermarks de cada ETF
-    st.subheader("Watermarks (Por ETF)")
-    for etf in etfs:
-        cumulative_returns = (returns[etf] + 1).cumprod() - 1
-        watermark = cumulative_returns.cummax()
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(watermark.index, watermark, label=f"Watermark {etf}", color="purple")
-        ax.set_title(f"Watermark de {etf}")
-        ax.set_xlabel("Fecha")
-        ax.set_ylabel("Watermark (Valor Máximo)")
-        ax.legend(loc="best")
-        st.pyplot(fig)
-
-    # Graficar los Drawdowns de cada ETF
-    st.subheader("Drawdowns (Por ETF)")
-    for etf in etfs:
-        cumulative_returns = (returns[etf] + 1).cumprod() - 1
+        
+        # Drawdown
         drawdown = cumulative_returns - cumulative_returns.cummax()
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(drawdown.index, drawdown, label=f"Drawdown {etf}", color="red")
-        ax.set_title(f"Drawdown de {etf}")
-        ax.set_xlabel("Fecha")
-        ax.set_ylabel("Drawdown")
-        ax.legend(loc="best")
-        st.pyplot(fig)
-
-    # Graficar los rendimientos acumulados de todos los ETFs
+        
+        # Watermark
+        watermark = cumulative_returns.cummax()
+        
+        # Gráfica: Distribución de rendimientos
+        st.write(f"Distribución de Rendimientos Diarios de {etf}")
+        fig_dist = px.histogram(returns[etf], nbins=50, title=f"Distribución de Rendimientos Diarios ({etf})",
+                                labels={"value": "Rendimiento Diario"}, template="plotly_white")
+        st.plotly_chart(fig_dist)
+        
+        # Gráfica: Rendimiento acumulado
+        st.write(f"Rendimiento Acumulado de {etf}")
+        fig_cum = px.line(cumulative_returns, title=f"Rendimiento Acumulado ({etf})",
+                          labels={"index": "Fecha", "value": "Rendimiento Acumulado"}, template="plotly_white")
+        st.plotly_chart(fig_cum)
+        
+        # Gráfica: Drawdown
+        st.write(f"Drawdown de {etf}")
+        fig_dd = px.line(drawdown, title=f"Drawdown ({etf})",
+                         labels={"index": "Fecha", "value": "Drawdown"}, template="plotly_white")
+        st.plotly_chart(fig_dd)
+        
+        # Gráfica: Watermark
+        st.write(f"Watermark de {etf}")
+        fig_wm = px.line(watermark, title=f"Watermark ({etf})",
+                         labels={"index": "Fecha", "value": "Valor Máximo Acumulado"}, template="plotly_white")
+        st.plotly_chart(fig_wm)
+    
+    # Gráfica: Rendimientos acumulados de todos los ETFs
     st.subheader("Rendimientos Acumulados de Todos los ETFs")
     cumulative_returns_all = (returns + 1).cumprod() - 1
-    fig, ax = plt.subplots(figsize=(10, 6))
-    for etf in etfs:
-        ax.plot(cumulative_returns_all.index, cumulative_returns_all[etf], label=etf)
-    ax.set_title("Rendimientos Acumulados de Todos los ETFs (2010-2023)")
-    ax.set_xlabel("Fecha")
-    ax.set_ylabel("Rendimiento Acumulado")
-    ax.legend(loc="best")
-    st.pyplot(fig)
-
-     # Heatmap de la matriz de correlaciones entre ETFs
-    st.subheader("Mapa de Calor de la Matriz de Correlaciones entre ETFs")
-    correlation_matrix = returns.corr()  # Matriz de correlaciones de los rendimientos diarios
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.heatmap(correlation_matrix, annot=True, fmt=".2f", cmap="coolwarm", cbar=True, ax=ax)
-    ax.set_title("Matriz de Correlaciones entre los Rendimientos de los ETFs")
-    st.pyplot(fig)
-
+    fig_all_cum = px.line(cumulative_returns_all, title="Rendimientos Acumulados de Todos los ETFs (2010-2023)",
+                          labels={"index": "Fecha", "value": "Rendimiento Acumulado"}, template="plotly_white")
+    st.plotly_chart(fig_all_cum)
+    
+    # Heatmap de la matriz de correlaciones entre rendimientos diarios
+    st.subheader("Mapa de Calor de la Matriz de Correlaciones entre los Rendimientos Diarios")
+    correlation_matrix = returns.corr()
+    fig_heatmap = px.imshow(correlation_matrix, text_auto=True, title="Matriz de Correlaciones",
+                            labels={"color": "Correlación"}, template="plotly_white", color_continuous_scale="coolwarm")
+    st.plotly_chart(fig_heatmap)
 
 # --- Portafolios Óptimos ---
 with tabs[3]:
