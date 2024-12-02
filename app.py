@@ -8,8 +8,6 @@ import numpy as np
 from scipy.optimize import minimize
 from scipy.stats import skew, kurtosis
 from datetime import datetime
-import requests
-from bs4 import BeautifulSoup
 
 # --- Funciones Auxiliares ---
 @st.cache_data
@@ -21,57 +19,6 @@ def cargar_datos(tickers, inicio, fin):
         df['Retornos'] = df['Close'].pct_change()
         datos[ticker] = df
     return datos
-
-def obtener_informacion_etf(ticker):
-    """Obtiene información detallada del ETF desde Yahoo Finance y extrae más detalles si es posible."""
-    etf = yf.Ticker(ticker)
-    info = etf.info
-    
-    # Intentamos obtener información adicional desde la página oficial del ETF usando BeautifulSoup
-    url = f"https://finance.yahoo.com/quote/{ticker}/holdings"
-    page = requests.get(url)
-    soup = BeautifulSoup(page.content, "html.parser")
-    
-    # Extracción de los principales holdings
-    holdings = []
-    for row in soup.find_all('tr')[1:]:
-        columns = row.find_all('td')
-        if len(columns) > 0:
-            holding = columns[0].text.strip()
-            holding_percent = columns[1].text.strip()
-            holdings.append({"symbol": holding, "holdingPercent": holding_percent})
-
-    return {
-        "nombre": info.get('shortName', 'No disponible'),
-        "descripcion": info.get('longBusinessSummary', 'No disponible'),
-        "sector": info.get('sector', 'No disponible'),
-        "categoria": info.get('category', 'No disponible'),
-        "exposicion_geografica": info.get('region', 'No disponible'),
-        "composicion": holdings if holdings else 'No disponible',
-        "gastos": info.get('expenseRatio', 'No disponible'),
-        "rango_1y": info.get('fiftyTwoWeekRange', 'No disponible'),
-        "rendimiento_ytd": info.get('ytdReturn', 'No disponible'),
-        "moneda": info.get('currency', 'No disponible'),
-        "beta": info.get('beta', 'No disponible'),
-        "url": f"https://finance.yahoo.com/quote/{ticker}"
-    }
-
-def calcular_metricas(df, nivel_VaR=[0.95, 0.975, 0.99]):
-    """Calcula métricas estadísticas clave, incluyendo VaR a diferentes niveles."""
-    retornos = df['Retornos'].dropna()
-    metrics = {
-        "Media (%)": np.mean(retornos) * 100,
-        "Volatilidad (%)": np.std(retornos) * 100,
-        "Sesgo": skew(retornos),
-        "Curtosis": kurtosis(retornos),
-        "Beta": df['Retornos'].cov(df['Retornos']) / df['Retornos'].var(),  # Beta simple
-        "VaR 95%": np.percentile(retornos, 5),
-        "VaR 97.5%": np.percentile(retornos, 2.5),
-        "VaR 99%": np.percentile(retornos, 1),
-        "CVaR 95%": retornos[retornos <= np.percentile(retornos, 5)].mean(),
-        "Sharpe Ratio": np.mean(retornos) / np.std(retornos)
-    }
-    return pd.DataFrame(metrics, index=["Valor"]).T
 
 def optimizar_portafolio(retornos, metodo="min_vol", objetivo=None):
     """Optimiza el portafolio basado en mínima volatilidad, Sharpe Ratio o un rendimiento objetivo."""
@@ -100,13 +47,6 @@ def optimizar_portafolio(retornos, metodo="min_vol", objetivo=None):
     resultado = minimize(objetivo_funcion, w_inicial, constraints=restricciones, bounds=limites)
     return resultado.x
 
-def calcular_drawdown(df):
-    """Calcula el drawdown y watermark de una serie de precios."""
-    roll_max = df['Close'].cummax()
-    daily_drawdown = df['Close'] / roll_max - 1.0
-    watermark = df['Close'] / roll_max
-    return daily_drawdown, watermark
-
 # --- Configuración de Streamlit ---
 st.title("Proyecto de Optimización de Portafolios")
 
@@ -117,94 +57,159 @@ tabs = st.tabs(["Introducción", "Selección de ETF's", "Estadísticas de los ET
 with tabs[0]:
     st.header("Introducción")
     st.write("""
-    Este proyecto tiene como objetivo analizar y optimizar un portafolio utilizando ETFs en diferentes clases de activos.
+    Este proyecto tiene como objetivo analizar y optimizar un portafolio utilizando ETFs en diferentes clases de activos. A continuación, se seleccionan 5 ETFs con características variadas para crear un portafolio diversificado. 
+    En este ejercicio se explicarán sus características, como exposición, índice, moneda, contribuyentes principales, métricas de riesgo, estilo de inversión, costos y más.
     """)
 
 # --- Selección de ETF's ---
 with tabs[1]:
     st.header("Selección de ETF's")
 
-    # Definir los tickers antes de usarlos
+    # Información de los ETFs
     tickers = {
-        "TLT": "Bonos del Tesoro a Largo Plazo (Renta Fija Desarrollada)",
-        "EMB": "Bonos Mercados Emergentes (Renta Fija Emergente)",
-        "SPY": "S&P 500 (Renta Variable Desarrollada)",
-        "EEM": "MSCI Mercados Emergentes (Renta Variable Emergente)",
-        "GLD": "Oro Físico (Materias Primas)"
+        "TLT": {
+            "nombre": "iShares 20+ Year Treasury Bond ETF (Renta Fija Desarrollada)",
+            "descripcion": "Este ETF sigue el índice ICE U.S. Treasury 20+ Year Bond Index, compuesto por bonos del gobierno de EE. UU. con vencimientos superiores a 20 años.",
+            "sector": "Renta fija",
+            "categoria": "Bonos del Tesoro de EE. UU.",
+            "exposicion": "Bonos del gobierno de EE. UU. a largo plazo.",
+            "moneda": "USD",
+            "beta": 0.2,
+            "top_holdings": [
+                {"symbol": "US Treasury", "holdingPercent": "100%"}
+            ],
+            "gastos": "0.15%",
+            "rango_1y": "120-155 USD",
+            "rendimiento_ytd": "5%",
+            "duracion": "Larga"
+        },
+        "EMB": {
+            "nombre": "iShares JP Morgan USD Emerging Markets Bond ETF (Renta Fija Emergente)",
+            "descripcion": "Este ETF sigue el índice J.P. Morgan EMBI Global Diversified Index, que rastrea bonos soberanos de mercados emergentes en dólares estadounidenses.",
+            "sector": "Renta fija",
+            "categoria": "Bonos emergentes",
+            "exposicion": "Bonos soberanos de mercados emergentes denominados en USD.",
+            "moneda": "USD",
+            "beta": 0.6,
+            "top_holdings": [
+                {"symbol": "Brazil 10Yr Bond", "holdingPercent": "10%"},
+                {"symbol": "Mexico 10Yr Bond", "holdingPercent": "9%"},
+                {"symbol": "Russia 10Yr Bond", "holdingPercent": "7%"}
+            ],
+            "gastos": "0.39%",
+            "rango_1y": "85-105 USD",
+            "rendimiento_ytd": "8%",
+            "duracion": "Media"
+        },
+        "SPY": {
+            "nombre": "SPDR S&P 500 ETF Trust (Renta Variable Desarrollada)",
+            "descripcion": "Este ETF sigue el índice S&P 500, compuesto por las 500 principales empresas de EE. UU.",
+            "sector": "Renta variable",
+            "categoria": "Acciones grandes de EE. UU.",
+            "exposicion": "Acciones de las 500 empresas más grandes de EE. UU.",
+            "moneda": "USD",
+            "beta": 1.0,
+            "top_holdings": [
+                {"symbol": "Apple", "holdingPercent": "6.5%"},
+                {"symbol": "Microsoft", "holdingPercent": "5.7%"},
+                {"symbol": "Amazon", "holdingPercent": "4.3%"}
+            ],
+            "gastos": "0.0945%",
+            "rango_1y": "360-420 USD",
+            "rendimiento_ytd": "15%",
+            "duracion": "Baja"
+        },
+        "VWO": {
+            "nombre": "Vanguard FTSE Emerging Markets ETF (Renta Variable Emergente)",
+            "descripcion": "Este ETF sigue el índice FTSE Emerging Markets All Cap China A Inclusion Index, que incluye acciones de mercados emergentes en Asia, Europa, América Latina y África.",
+            "sector": "Renta variable",
+            "categoria": "Acciones emergentes",
+            "exposicion": "Mercados emergentes globales.",
+            "moneda": "USD",
+            "beta": 1.2,
+            "top_holdings": [
+                {"symbol": "Tencent", "holdingPercent": "6%"},
+                {"symbol": "Alibaba", "holdingPercent": "4.5%"},
+                {"symbol": "Taiwan Semiconductor", "holdingPercent": "4%"}
+            ],
+            "gastos": "0.08%",
+            "rango_1y": "40-55 USD",
+            "rendimiento_ytd": "10%",
+            "duracion": "Alta"
+        },
+        "GLD": {
+            "nombre": "SPDR Gold Shares (Materias Primas)",
+            "descripcion": "Este ETF sigue el precio del oro físico.",
+            "sector": "Materias primas",
+            "categoria": "Oro físico",
+            "exposicion": "Oro físico y contratos futuros de oro.",
+            "moneda": "USD",
+            "beta": 0.1,
+            "top_holdings": [
+                {"symbol": "Gold", "holdingPercent": "100%"}
+            ],
+            "gastos": "0.40%",
+            "rango_1y": "160-200 USD",
+            "rendimiento_ytd": "12%",
+            "duracion": "Baja"
+        }
     }
 
-    # Convertir dict_keys a lista
-    tickers_lista = list(tickers.keys())
-    
     # Descargar los datos de los ETFs
+    tickers_lista = list(tickers.keys())
     datos_2010_2023 = cargar_datos(tickers_lista, "2010-01-01", "2023-01-01")
 
     # Mostrar información de cada ETF
-    for ticker, descripcion in tickers.items():
-        st.subheader(f"{ticker} - {descripcion}")
+    for ticker, info in tickers.items():
+        st.subheader(f"{info['nombre']}")
         
-        # Obtener información detallada del ETF
-        info_etf = obtener_informacion_etf(ticker)
+        st.write(f"### Descripción del ETF:")
+        st.write(info['descripcion'])
         
-        # Mostrar detalles sobre la composición del ETF
-        st.write("### Descripción del ETF:")
-        st.write(info_etf['descripcion'])
+        st.write(f"### Sector de Inversión:")
+        st.write(info['sector'])
         
-        st.write("### Sector de Inversión:")
-        st.write(info_etf['sector'])
+        st.write(f"### Categoría del ETF:")
+        st.write(info['categoria'])
         
-        st.write("### Categoría del ETF:")
-        st.write(info_etf['categoria'])
+        st.write(f"### Exposición del ETF:")
+        st.write(info['exposicion'])
         
-        st.write("### Exposición Geográfica:")
-        st.write(info_etf['exposicion_geografica'])
+        st.write(f"### Moneda de Denominación:")
+        st.write(info['moneda'])
         
-        st.write("### Composición Top Holdings:")
-        st.write(info_etf['composicion'])
+        st.write(f"### Beta del ETF:")
+        st.write(info['beta'])
         
-        st.write("### Relación de Gastos (Expense Ratio):")
-        st.write(f"{info_etf['gastos']} %")
+        st.write(f"### Costos (Expense Ratio):")
+        st.write(info['gastos'])
         
-        st.write("### Rango de Precio (1 Año):")
-        st.write(info_etf['rango_1y'])
+        st.write(f"### Rango de Precio (1 Año):")
+        st.write(info['rango_1y'])
         
-        st.write("### Rendimiento YTD (Año hasta la fecha):")
-        st.write(f"{info_etf['rendimiento_ytd']} %")
+        st.write(f"### Rendimiento YTD (Año hasta la fecha):")
+        st.write(info['rendimiento_ytd'])
         
-        st.write("### Moneda en la que cotiza:")
-        st.write(info_etf['moneda'])
+        st.write(f"### Duración del ETF:")
+        st.write(info['duracion'])
         
-        st.write("### Beta del ETF:")
-        st.write(info_etf['beta'])
+        st.write("### Principales Contribuidores (Top Holdings):")
+        st.write(pd.DataFrame(info['top_holdings']))
         
         # Graficar el rendimiento histórico
-        fig = px.line(datos_2010_2023[ticker], x=datos_2010_2023[ticker].index, y=datos_2010_2023[ticker]['Close'].values.flatten(), title=f"Precio de Cierre - {ticker}")
+        fig = px.line(datos_2010_2023[ticker], x=datos_2010_2023[ticker].index, y=datos_2010_2023[ticker]['Close'].values.flatten(), title=f"Precio de Cierre - {info['nombre']}")
         st.plotly_chart(fig)
-
-        # Calcular y graficar Drawdown y Watermark
-        drawdown, watermark = calcular_drawdown(datos_2010_2023[ticker])
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=datos_2010_2023[ticker].index, y=drawdown, mode='lines', name='Drawdown'))
-        fig.add_trace(go.Scatter(x=datos_2010_2023[ticker].index, y=watermark, mode='lines', name='Watermark'))
-        fig.update_layout(title=f"Drawdown y Watermark - {ticker}", xaxis_title="Fecha", yaxis_title="Valor")
-        st.plotly_chart(fig)
-
-        # Si se tienen los top holdings, mostrar una tabla
-        if isinstance(info_etf['composicion'], list) and len(info_etf['composicion']) > 0:
-            st.write("### Principales Activos (Top Holdings):")
-            df_composicion = pd.DataFrame(info_etf['composicion'])
-            st.dataframe(df_composicion[['symbol', 'holdingPercent']])
 
 # --- Estadísticas de los ETF's ---
 with tabs[2]:
     st.header("Estadísticas de los ETF's (2010-2023)")
     for ticker, descripcion in tickers.items():
-        st.subheader(f"{ticker} - {descripcion}")
+        st.subheader(f"{descripcion['nombre']}")
         metricas = calcular_metricas(datos_2010_2023[ticker])
         st.write(pd.DataFrame(metricas, index=["Valor"]).T)
 
         # Graficar distribución de retornos
-        fig = px.histogram(datos_2010_2023[ticker].dropna(), x="Retornos", nbins=50, title=f"Distribución de Retornos - {ticker}")
+        fig = px.histogram(datos_2010_2023[ticker].dropna(), x="Retornos", nbins=50, title=f"Distribución de Retornos - {descripcion['nombre']}")
         st.plotly_chart(fig)
 
 # --- Portafolios Óptimos ---
@@ -222,44 +227,3 @@ with tabs[3]:
     fig = px.bar(x=tickers_lista, y=pesos_min_vol, title="Pesos - Mínima Volatilidad")
     st.plotly_chart(fig)
 
-    # 2. Máximo Sharpe Ratio
-    st.subheader("Portafolio de Máximo Sharpe Ratio")
-    pesos_sharpe = optimizar_portafolio(retornos_2010_2020, metodo="sharpe")
-    st.write("Pesos Óptimos (Máximo Sharpe Ratio):")
-    for ticker, peso in zip(tickers_lista, pesos_sharpe):
-        st.write(f"{ticker}: {peso:.2%}")
-    fig = px.bar(x=tickers_lista, y=pesos_sharpe, title="Pesos - Máximo Sharpe Ratio")
-    st.plotly_chart(fig)
-
-    # 3. Mínima Volatilidad con Rendimiento Objetivo
-    rendimiento_objetivo = 0.10 / 252  # Rendimiento objetivo anualizado
-    st.subheader("Portafolio de Mínima Volatilidad con Rendimiento Objetivo (10% Anual)")
-    pesos_target = optimizar_portafolio(retornos_2010_2020, metodo="target", objetivo=rendimiento_objetivo)
-    st.write("Pesos Óptimos (Rendimiento Objetivo):")
-    for ticker, peso in zip(tickers_lista, pesos_target):
-        st.write(f"{ticker}: {peso:.2%}")
-    fig = px.bar(x=tickers_lista, y=pesos_target, title="Pesos - Rendimiento Objetivo (10%)")
-    st.plotly_chart(fig)
-
-# --- Backtesting ---
-with tabs[4]:
-    st.header("Backtesting (2021-2023)")
-    datos_2021_2023 = cargar_datos(tickers_lista, "2021-01-01", "2023-01-01")
-    retornos_2021_2023 = pd.DataFrame({k: v["Retornos"] for k, v in datos_2021_2023.items()}).dropna()
-
-    st.subheader("Rendimientos Acumulados de los Portafolios")
-    rendimientos_portafolio = pd.DataFrame(index=retornos_2021_2023.index)
-    for nombre, pesos in [("Mínima Volatilidad", pesos_min_vol), 
-                          ("Sharpe Ratio", pesos_sharpe), 
-                          ("Rendimiento Objetivo", pesos_target)]:
-        rendimientos = retornos_2021_2023 @ pesos
-        rendimientos_portafolio[nombre] = rendimientos.cumsum()
-    
-    fig = px.line(rendimientos_portafolio, x=rendimientos_portafolio.index, title="Rendimientos Acumulados de los Portafolios")
-    st.plotly_chart(fig)
-
-    # Heatmap de Correlación
-    st.subheader("Heatmap de Correlación de los ETFs")
-    correlacion = retornos_2021_2023.corr()
-    fig = px.imshow(correlacion, text_auto=True, title="Correlación entre los ETFs")
-    st.plotly_chart(fig)
