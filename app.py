@@ -234,6 +234,92 @@ with tabs[1]:
 
 
 # --- Estadísticas de los ETF's ---
+# --- Funciones auxiliares ---
+# --- Funciones para el tab1 ---
+
+# Función para cargar los datos de los ETFs del tab1
+def ventana1(etfs, start_date="2010-01-01"):
+    end_date = datetime.today().strftime('%Y-%m-%d')  # Fecha actual
+    data = yf.download(etfs, start=start_date, end=end_date)["Adj Close"]
+    returns = data.pct_change().dropna()
+    return data, returns
+
+# --- Funciones para el tab2 ---
+
+def calcular_metricas(returns):
+    # Cálculos básicos
+    media = returns.mean()
+    sesgo = skew(returns)
+    curtosis = kurtosis(returns)
+    
+    # VaR y CVaR (Niveles de confianza al 95%, 97.5% y 99%)
+    var_95 = np.percentile(returns, 5)
+    var_975 = np.percentile(returns, 2.5)
+    var_99 = np.percentile(returns, 1)
+    
+    cvar_95 = returns[returns <= var_95].mean()
+    cvar_975 = returns[returns <= var_975].mean()
+    cvar_99 = returns[returns <= var_99].mean()
+    
+    # Sharpe y Sortino
+    sharpe_ratio = media / returns.std()
+    sortino_ratio = media / returns[returns < 0].std()
+    
+    # Drawdown
+    cumulative_returns = (returns + 1).cumprod() - 1
+    max_drawdown = (cumulative_returns - cumulative_returns.cummax()).min()
+    
+    # Watermark (máximo valor alcanzado y el punto más bajo de drawdown)
+    watermark = cumulative_returns.cummax()
+    lowest_point = cumulative_returns.min()
+    
+    # Resultados
+    return {
+        'Media': media,
+        'Sesgo': sesgo,
+        'Curtosis': curtosis,
+        'VaR (95%)': var_95,
+        'VaR (97.5%)': var_975,
+        'VaR (99%)': var_99,
+        'CVaR (95%)': cvar_95,
+        'CVaR (97.5%)': cvar_975,
+        'CVaR (99%)': cvar_99,
+        'Sharpe Ratio': sharpe_ratio,
+        'Sortino Ratio': sortino_ratio,
+        'Drawdown Máximo': max_drawdown,
+        'Watermark Máximo': watermark.iloc[-1],
+        'Punto más Bajo del Drawdown': lowest_point
+    }
+
+# --- Función para cargar datos ---
+def ventana2(etfs, start_date="2010-01-01", end_date="2023-12-31"):
+    data = yf.download(etfs, start=start_date, end=end_date)["Adj Close"]
+    returns = data.pct_change().dropna()
+    return data, returns
+
+
+# --- Streamlit UI ---
+st.title("Proyecto de Optimización de Portafolios")
+
+# Crear tabs
+tabs = st.tabs(["Introducción", "Selección de ETF's", "Estadísticas de los ETF's", "Portafolios Óptimos", "Backtesting", "Modelo Black-Litterman"])
+
+# --- Introducción ---
+with tabs[0]:
+    st.header("Introducción")
+    st.write(""" 
+    Este proyecto tiene como objetivo analizar y optimizar un portafolio utilizando ETFs en diferentes clases de activos, tales como renta fija, renta variable, y materias primas. A lo largo del proyecto, se evaluará el rendimiento de estos activos a través de diversas métricas financieras y técnicas de optimización de portafolios, como la optimización de mínima volatilidad y la maximización del Sharpe Ratio.
+    
+    Para lograr esto, se utilizarán datos históricos de rendimientos y se realizarán pruebas de backtesting para validar las estrategias propuestas. Además, se implementará el modelo de optimización Black-Litterman para ajustar los rendimientos esperados en función de perspectivas macroeconómicas.
+    
+    Los integrantes de este proyecto son:
+    - Emmanuel Reyes Hernández
+    - Adrián Fuentes Soriano
+    - Pablo Pineda Pineda
+    - Mariana Vigil Villegas
+    """)
+
+# --- Estadísticas de los ETF's ---
 with tabs[2]:
     st.header("Estadísticas de los Activos")
     
@@ -245,33 +331,6 @@ with tabs[2]:
     etfs = ["LQD", "VWOB", "SPY", "EEM", "DBC"]
     data, returns = ventana2(etfs, start_date="2010-01-01", end_date=datetime.now().strftime("%Y-%m-%d"))
     
-    # Función para calcular métricas
-    def calcular_metricas(returns):
-        if returns.empty:  # Validación por si no hay datos
-            return {
-                "mean": None,
-                "var_95": None,
-                "var_975": None,
-                "var_99": None,
-                "cvar_95": None,
-                "cvar_975": None,
-                "cvar_99": None,
-                "max_drawdown": None,
-                "max_watermark": None,
-            }
-        metrics = {
-            "mean": returns.mean(),
-            "var_95": returns.quantile(0.05),
-            "var_975": returns.quantile(0.025),
-            "var_99": returns.quantile(0.01),
-            "cvar_95": returns[returns <= returns.quantile(0.05)].mean(),
-            "cvar_975": returns[returns <= returns.quantile(0.025)].mean(),
-            "cvar_99": returns[returns <= returns.quantile(0.01)].mean(),
-            "max_drawdown": (returns + 1).cumprod().min(),
-            "max_watermark": (returns + 1).cumprod().max(),
-        }
-        return metrics
-
     # Crear un dataframe para almacenar los resultados de las métricas
     resultados = pd.DataFrame(columns=[
         "Media (%)", "Sesgo", "Curtosis", "VaR (95%)", "VaR (97.5%)", "VaR (99%)",
@@ -281,15 +340,19 @@ with tabs[2]:
     # Calcular las métricas para cada ETF y llenar los dataframes
     for etf in etfs:
         metrics = calcular_metricas(returns[etf])
-        resultados.loc[etf, "Media (%)"] = metrics["mean"] * 100 if metrics["mean"] is not None else None
+        resultados.loc[etf, "Media (%)"] = metrics["Media"] * 100 if metrics["Media"] is not None else None
         resultados.loc[etf, ["VaR (95%)", "VaR (97.5%)", "VaR (99%)"]] = [
-            metrics[f"var_{p}"] * 100 if metrics[f"var_{p}"] is not None else None for p in [95, 97.5, 99]
+            metrics[f"VaR (95%)"] * 100 if metrics[f"VaR (95%)"] is not None else None, 
+            metrics[f"VaR (97.5%)"] * 100 if metrics[f"VaR (97.5%)"] is not None else None,
+            metrics[f"VaR (99%)"] * 100 if metrics[f"VaR (99%)"] is not None else None
         ]
         resultados.loc[etf, ["CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)"]] = [
-            metrics[f"cvar_{p}"] * 100 if metrics[f"cvar_{p}"] is not None else None for p in [95, 97.5, 99]
+            metrics[f"CVaR (95%)"] * 100 if metrics[f"CVaR (95%)"] is not None else None, 
+            metrics[f"CVaR (97.5%)"] * 100 if metrics[f"CVaR (97.5%)"] is not None else None, 
+            metrics[f"CVaR (99%)"] * 100 if metrics[f"CVaR (99%)"] is not None else None
         ]
-        resultados.loc[etf, "Drawdown Máximo (%)"] = metrics["max_drawdown"] * 100 if metrics["max_drawdown"] is not None else None
-        resultados.loc[etf, "Watermark Máximo (%)"] = metrics["max_watermark"] * 100 if metrics["max_watermark"] is not None else None
+        resultados.loc[etf, "Drawdown Máximo (%)"] = metrics["Drawdown Máximo"] * 100 if metrics["Drawdown Máximo"] is not None else None
+        resultados.loc[etf, "Watermark Máximo (%)"] = metrics["Watermark Máximo"] * 100 if metrics["Watermark Máximo"] is not None else None
 
     # Redondear las métricas en el DataFrame
     resultados = resultados.round(2)
@@ -328,19 +391,6 @@ with tabs[2]:
         fig_dd = px.line(drawdown, title=f"Drawdown ({etf})",
                          labels={"index": "Fecha", "value": "Drawdown"}, template="plotly_white")
         st.plotly_chart(fig_dd)
-        
-        # Gráfica: Watermark
-        st.write(f"Watermark de {etf}")
-        fig_wm = px.line(watermark, title=f"Watermark ({etf})",
-                         labels={"index": "Fecha", "value": "Valor Máximo Acumulado"}, template="plotly_white")
-        st.plotly_chart(fig_wm)
-    
-    # Gráfica: Rendimientos acumulados de todos los ETFs
-    st.subheader("Rendimientos Acumulados de Todos los ETFs")
-    cumulative_returns_all = (returns + 1).cumprod() - 1
-    fig_all_cum = px.line(cumulative_returns_all, title="Rendimientos Acumulados de Todos los ETFs (2010-2023)",
-                          labels={"index": "Fecha", "value": "Rendimiento Acumulado"}, template="plotly_white")
-    st.plotly_chart(fig_all_cum)
 
     # Calcular la matriz de correlaciones entre los rendimientos diarios
     st.subheader("Mapa de Calor de la Matriz de Correlaciones entre los Rendimientos Diarios")
