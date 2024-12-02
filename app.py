@@ -231,73 +231,7 @@ with tabs[1]:
 
     # Mostrar gráfico combinado
     st.plotly_chart(fig_all)
-
-
-# --- Estadísticas de los ETF's ---
-# --- Funciones auxiliares ---
-# --- Funciones para el tab1 ---
-
-# Función para cargar los datos de los ETFs del tab1
-def ventana1(etfs, start_date="2010-01-01"):
-    end_date = datetime.today().strftime('%Y-%m-%d')  # Fecha actual
-    data = yf.download(etfs, start=start_date, end=end_date)["Adj Close"]
-    returns = data.pct_change().dropna()
-    return data, returns
-
-# --- Funciones para el tab2 ---
-
-def calcular_metricas(returns):
-    # Cálculos básicos
-    media = returns.mean()
-    sesgo = skew(returns)
-    curtosis = kurtosis(returns)
     
-    # VaR y CVaR (Niveles de confianza al 95%, 97.5% y 99%)
-    var_95 = np.percentile(returns, 5)
-    var_975 = np.percentile(returns, 2.5)
-    var_99 = np.percentile(returns, 1)
-    
-    cvar_95 = returns[returns <= var_95].mean()
-    cvar_975 = returns[returns <= var_975].mean()
-    cvar_99 = returns[returns <= var_99].mean()
-    
-    # Sharpe y Sortino
-    sharpe_ratio = media / returns.std()
-    sortino_ratio = media / returns[returns < 0].std()
-    
-    # Drawdown
-    cumulative_returns = (returns + 1).cumprod() - 1
-    max_drawdown = (cumulative_returns - cumulative_returns.cummax()).min()
-    
-    # Watermark (máximo valor alcanzado y el punto más bajo de drawdown)
-    watermark = cumulative_returns.cummax()
-    lowest_point = cumulative_returns.min()
-    
-    # Resultados
-    return {
-        'Media': media,
-        'Sesgo': sesgo,
-        'Curtosis': curtosis,
-        'VaR (95%)': var_95,
-        'VaR (97.5%)': var_975,
-        'VaR (99%)': var_99,
-        'CVaR (95%)': cvar_95,
-        'CVaR (97.5%)': cvar_975,
-        'CVaR (99%)': cvar_99,
-        'Sharpe Ratio': sharpe_ratio,
-        'Sortino Ratio': sortino_ratio,
-        'Drawdown Máximo': max_drawdown,
-        'Watermark Máximo': watermark.iloc[-1],
-        'Punto más Bajo del Drawdown': lowest_point
-    }
-
-# --- Función para cargar datos ---
-def ventana2(etfs, start_date="2010-01-01", end_date="2023-12-31"):
-    data = yf.download(etfs, start=start_date, end=end_date)["Adj Close"]
-    returns = data.pct_change().dropna()
-    return data, returns
-
-
 # --- Streamlit UI ---
 st.title("Proyecto de Optimización de Portafolios")
 
