@@ -25,54 +25,56 @@ def optimizar_portafolio(retornos, metodo="min_vol", objetivo=None):
     media = retornos.mean()
     cov = retornos.cov()
 
+    # Función para calcular la volatilidad del portafolio
     def riesgo(w):
-        return np.sqrt(w.T @ cov @ w)
+        return np.sqrt(np.dot(w, np.dot(cov, w)))
 
+    # Función para calcular el Sharpe ratio del portafolio
     def sharpe(w):
-        return -(w.T @ media) / np.sqrt(w.T @ cov @ w)
+        return -(np.dot(w, media) / np.sqrt(np.dot(w, np.dot(cov, w))))
 
     n = len(media)
     w_inicial = np.ones(n) / n
-    restricciones = [{"type": "eq", "fun": lambda w: np.sum(w) - 1}]
+    restricciones = [{"type": "eq", "fun": lambda w: np.sum(w) - 1}]  # Suma de pesos debe ser 1
 
     if metodo == "target":
-        restricciones.append({"type": "eq", "fun": lambda w: w.T @ media - objetivo})
+        restricciones.append({"type": "eq", "fun": lambda w: np.dot(w, media) - objetivo})  # Objetivo de rendimiento
         objetivo_funcion = riesgo
     elif metodo == "sharpe":
         objetivo_funcion = sharpe
     else:
         objetivo_funcion = riesgo
 
-    limites = [(0, 1) for _ in range(n)]
+    limites = [(0, 1) for _ in range(n)]  # Pesos entre 0 y 1
     resultado = minimize(objetivo_funcion, w_inicial, constraints=restricciones, bounds=limites)
     return resultado.x
 
 def calcular_metricas(df, nivel_VaR=[0.95, 0.975, 0.99]):
     """Calcula métricas estadísticas clave, incluyendo VaR a diferentes niveles."""
     retornos = df['Retornos'].dropna()
-    
+
     # Calcular la media y volatilidad
     media = np.mean(retornos) * 100  # Convertir a porcentaje
     volatilidad = np.std(retornos) * 100  # Convertir a porcentaje
-    
+
     # Calcular el sesgo y curtosis
     sesgo = skew(retornos)
     curtosis = kurtosis(retornos)
-    
+
     # Calcular el VaR a diferentes niveles
     VaR = {f"VaR {nivel*100}%": np.percentile(retornos, (1 - nivel) * 100) for nivel in nivel_VaR}
-    
+
     # Calcular el CVaR (Conditional VaR)
     cVaR = {f"CVaR {nivel*100}%": retornos[retornos <= np.percentile(retornos, (1 - nivel) * 100)].mean() for nivel in nivel_VaR}
-    
+
     # Calcular el Sharpe Ratio
     sharpe = np.mean(retornos) / np.std(retornos) if np.std(retornos) != 0 else np.nan
-    
+
     # Calcular el Beta (relación entre los retornos del ETF y el mercado)
     sp500 = yf.download("^GSPC", start=df.index[0], end=df.index[-1])['Adj Close']
     sp500_retornos = sp500.pct_change().dropna()
     beta = np.cov(retornos, sp500_retornos)[0][1] / np.var(sp500_retornos)
-    
+
     # Crear un diccionario con todas las métricas
     metrics = {
         "Media (%)": media,
@@ -84,7 +86,7 @@ def calcular_metricas(df, nivel_VaR=[0.95, 0.975, 0.99]):
         "Sharpe Ratio": sharpe,
         "Beta": beta
     }
-    
+
     return pd.DataFrame(metrics, index=["Valor"]).T
 
 # --- Configuración de Streamlit ---
@@ -298,8 +300,8 @@ with tabs[4]:
     for nombre, pesos in [("Mínima Volatilidad", pesos_min_vol), 
                           ("Sharpe Ratio", pesos_sharpe), 
                           ("Rendimiento Objetivo", pesos_target)]:
-        rendimientos = retornos_2021_2023 @ pesos
-        rendimientos_portafolio[nombre] = rendimientos.cumsum()
+        rendimientos = np.dot(retornos_2021_2023, pesos)  # Usando np.dot para obtener los rendimientos acumulados
+        rendimientos_portafolio[nombre] = np.cumsum(rendimientos)  # Sumar los rendimientos acumulados
     
     fig = px.line(rendimientos_portafolio, x=rendimientos_portafolio.index, title="Rendimientos Acumulados de los Portafolios")
     st.plotly_chart(fig)
