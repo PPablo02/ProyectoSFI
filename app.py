@@ -263,16 +263,10 @@ with tabs[1]:
     # Mostrar la serie de tiempo de cada ETF
     st.subheader("Series de Tiempo de los Precios de Cierre")
     for ticker, info in tickers.items():
-        st.write(f"### {info['nombre']} ({ticker})")
-        
-        # Graficar la serie de tiempo del precio de cierre
-        fig = px.line(
-            datos_2010_2023[ticker], 
-            x=datos_2010_2023[ticker].index, 
-            y="Close", 
-            title=f"Serie de Tiempo - {info['nombre']}",
-            labels={"Close": "Precio de Cierre", "index": "Fecha"}
-        )
+        fig = px.line(datos_2010_2023[ticker],
+                      x=datos_2010_2023[ticker].index,
+                      y=datos_2010_2023[ticker]['Close'].values.flatten(),
+                      title=f"Precio de Cierre - {info['nombre']}")
         st.plotly_chart(fig)
 
 # --- Estadísticas de los ETF's ---
