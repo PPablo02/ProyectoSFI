@@ -292,10 +292,10 @@ with tabs[4]:
                   title="Rendimientos Acumulados - Portafolios")
     st.plotly_chart(fig)
         # Graficar distribución de retornos
-        fig = px.histogram(datos_2010_2023[ticker]['Retornos'].dropna(), 
-                           x="Retornos", nbins=50, 
-                           title=f"Distribución de Retornos - {descripcion['nombre']}")
-        st.plotly_chart(fig)
+    fig = px.histogram(datos_2010_2023[ticker]['Retornos'].dropna(), 
+                    x="Retornos", nbins=50, 
+                    title=f"Distribución de Retornos - {descripcion['nombre']}")
+    st.plotly_chart(fig)
 
 # --- Portafolios Óptimos ---
 with tabs[3]:
