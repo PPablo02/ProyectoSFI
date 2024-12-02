@@ -129,6 +129,11 @@ def calcular_metricas(df, nivel_VaR=[0.95, 0.975, 0.99]):
     retornos_alineados = retornos.reindex(sp500_retornos.index).dropna()
     sp500_retornos_alineados = sp500_retornos.reindex(retornos_alineados.index).dropna()
 
+    # Alinear ambas series utilizando el índice compartido
+    indice_comun = retornos_alineados.index.intersection(sp500_retornos_alineados.index)
+    retornos_alineados = retornos_alineados.loc[indice_comun]
+    sp500_retornos_alineados = sp500_retornos_alineados.loc[indice_comun]
+
     if len(retornos_alineados) > 0 and len(sp500_retornos_alineados) > 0:
         covarianza = np.cov(retornos_alineados, sp500_retornos_alineados)[0, 1]
         var_sp500 = np.var(sp500_retornos_alineados)
