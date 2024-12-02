@@ -133,26 +133,29 @@ def calcular_metricas(df, nivel_VaR=[0.95, 0.975, 0.99]):
     indice_comun = retornos_alineados.index.intersection(sp500_retornos_alineados.index)
     retornos_alineados = retornos_alineados.loc[indice_comun]
     sp500_retornos_alineados = sp500_retornos_alineados.loc[indice_comun]
-
+    
+    # Convertir a arreglos bidimensionales explícitamente
+    retornos_alineados = retornos_alineados.values.flatten()
+    sp500_retornos_alineados = sp500_retornos_alineados.values.flatten()
+    
     if len(retornos_alineados) > 0 and len(sp500_retornos_alineados) > 0:
         covarianza = np.cov(retornos_alineados, sp500_retornos_alineados)[0, 1]
         var_sp500 = np.var(sp500_retornos_alineados)
         beta = covarianza / var_sp500 if var_sp500 != 0 else np.nan
     else:
         beta = np.nan
-
-    metrics = {
-        "Media (%)": media,
-        "Volatilidad (%)": volatilidad,
-        "Sesgo": sesgo,
-        "Curtosis": curtosis,
-        **VaR,
-        **cVaR,
-        "Sharpe Ratio": sharpe,
-        "Beta": beta
-    }
-
-    return pd.DataFrame(metrics, index=["Valor"]).T
+        metrics = {
+            "Media (%)": media,
+            "Volatilidad (%)": volatilidad,
+            "Sesgo": sesgo,
+            "Curtosis": curtosis,
+            **VaR,
+            **cVaR,
+            "Sharpe Ratio": sharpe,
+            "Beta": beta
+        }
+    
+        return pd.DataFrame(metrics, index=["Valor"]).T
 
 # --- Funciones de Optimización de Portafolios ---
 def optimizar_portafolio_markowitz(retornos, metodo="min_vol", objetivo=None):
