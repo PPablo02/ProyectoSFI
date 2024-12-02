@@ -178,6 +178,7 @@ with tabs[1]:
 
 # --- Estadísticas de los ETF's ---
 with tabs[2]:
+     st.header("Estadísticas de los ETF's")
    
 # --- Estadísticas de los ETF's ---
 with tabs[3]:
