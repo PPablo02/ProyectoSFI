@@ -235,40 +235,66 @@ with tabs[1]:
 
 # --- Estadísticas de los ETF's ---
 with tabs[2]:
-    st.header("Estadísticas de los ETF's")
+    st.header("Estadísticas de los Activos")
     
     st.write("""
-    En esta sección, se calcularán varias métricas estadísticas de los 5 ETFs seleccionados. Los rendimientos diarios de cada ETF serán utilizados para calcular la media, el VaR (Value at Risk), el CVaR (Conditional Value at Risk), el Drawdown y el Watermark.
+    En esta sección, se calcularán varias métricas estadísticas de los 5 ETFs seleccionados. Los rendimientos diarios de cada ETF serán utilizados para calcular la media, el sesgo, la curtosis, el VaR (Value at Risk), el CVaR (Conditional Value at Risk), el Sharpe Ratio, el Sortino Ratio, y el Drawdown.
     """)
 
     # Definir los ETFs seleccionados
     etfs = ["LQD", "VWOB", "SPY", "EEM", "DBC"]
     data, returns = ventana2(etfs, start_date="2010-01-01", end_date=datetime.now().strftime("%Y-%m-%d"))
     
-    # Crear un dataframe para almacenar los resultados de las métricas
-    resultados = pd.DataFrame(columns=["Media (%)", "VaR (95%)", "VaR (97.5%)", "VaR (99%)",
-                                       "CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)",
-                                       "Drawdown Máximo (%)", "Watermark Máximo (%)"], 
-                              index=etfs)
+    # Función para calcular métricas
+    def calcular_metricas(returns):
+        if returns.empty:  # Validación por si no hay datos
+            return {
+                "mean": None,
+                "var_95": None,
+                "var_975": None,
+                "var_99": None,
+                "cvar_95": None,
+                "cvar_975": None,
+                "cvar_99": None,
+                "max_drawdown": None,
+                "max_watermark": None,
+            }
+        metrics = {
+            "mean": returns.mean(),
+            "var_95": returns.quantile(0.05),
+            "var_975": returns.quantile(0.025),
+            "var_99": returns.quantile(0.01),
+            "cvar_95": returns[returns <= returns.quantile(0.05)].mean(),
+            "cvar_975": returns[returns <= returns.quantile(0.025)].mean(),
+            "cvar_99": returns[returns <= returns.quantile(0.01)].mean(),
+            "max_drawdown": (returns + 1).cumprod().min(),
+            "max_watermark": (returns + 1).cumprod().max(),
+        }
+        return metrics
 
-    # Calcular las métricas para cada ETF
+    # Crear un dataframe para almacenar los resultados de las métricas
+    resultados = pd.DataFrame(columns=[
+        "Media (%)", "Sesgo", "Curtosis", "VaR (95%)", "VaR (97.5%)", "VaR (99%)",
+        "CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)", "Drawdown Máximo (%)", "Watermark Máximo (%)"
+    ], index=etfs)
+
+    # Calcular las métricas para cada ETF y llenar los dataframes
     for etf in etfs:
         metrics = calcular_metricas(returns[etf])
-        # Guardar las métricas en el DataFrame
-        resultados.loc[etf, "Media (%)"] = metrics["mean"] * 100
-        resultados.loc[etf, ["VaR (95%)", "VaR (97.5%)", "VaR (99%)"]] = [metrics[f"var_{p}"] * 100 for p in [95, 97.5, 99]]
-        resultados.loc[etf, ["CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)"]] = [metrics[f"cvar_{p}"] * 100 for p in [95, 97.5, 99]]
-        resultados.loc[etf, "Drawdown Máximo (%)"] = metrics["max_drawdown"] * 100
-        resultados.loc[etf, "Watermark Máximo (%)"] = metrics["max_watermark"] * 100
-    
-    # Redondear las métricas
+        resultados.loc[etf, "Media (%)"] = metrics["mean"] * 100 if metrics["mean"] is not None else None
+        resultados.loc[etf, ["VaR (95%)", "VaR (97.5%)", "VaR (99%)"]] = [
+            metrics[f"var_{p}"] * 100 if metrics[f"var_{p}"] is not None else None for p in [95, 97.5, 99]
+        ]
+        resultados.loc[etf, ["CVaR (95%)", "CVaR (97.5%)", "CVaR (99%)"]] = [
+            metrics[f"cvar_{p}"] * 100 if metrics[f"cvar_{p}"] is not None else None for p in [95, 97.5, 99]
+        ]
+        resultados.loc[etf, "Drawdown Máximo (%)"] = metrics["max_drawdown"] * 100 if metrics["max_drawdown"] is not None else None
+        resultados.loc[etf, "Watermark Máximo (%)"] = metrics["max_watermark"] * 100 if metrics["max_watermark"] is not None else None
+
+    # Redondear las métricas en el DataFrame
     resultados = resultados.round(2)
 
-    # Convertir valores a formato porcentaje concatenado con "%"
-    for col in resultados.columns:
-        resultados[col] = resultados[col].apply(lambda x: f"{x:.2f}%" if not pd.isna(x) else "N/A")
-    
-    # Mostrar la tabla de métricas
+    # Mostrar las métricas calculadas
     st.subheader("Métricas de Riesgo y Rendimiento de los ETFs")
     st.dataframe(resultados)
 
@@ -287,56 +313,47 @@ with tabs[2]:
         
         # Gráfica: Distribución de rendimientos
         st.write(f"Distribución de Rendimientos Diarios de {etf}")
-        fig_dist = px.histogram(
-            returns[etf], nbins=50, title=f"Distribución de Rendimientos Diarios ({etf})",
-            labels={"value": "Rendimiento Diario"}, template="plotly_white"
-        )
+        fig_dist = px.histogram(returns[etf], nbins=50, title=f"Distribución de Rendimientos Diarios ({etf})",
+                                labels={"value": "Rendimiento Diario"}, template="plotly_white")
         st.plotly_chart(fig_dist)
         
         # Gráfica: Rendimiento acumulado
         st.write(f"Rendimiento Acumulado de {etf}")
-        fig_cum = px.line(
-            cumulative_returns, title=f"Rendimiento Acumulado ({etf})",
-            labels={"index": "Fecha", "value": "Rendimiento Acumulado"}, template="plotly_white"
-        )
+        fig_cum = px.line(cumulative_returns, title=f"Rendimiento Acumulado ({etf})",
+                          labels={"index": "Fecha", "value": "Rendimiento Acumulado"}, template="plotly_white")
         st.plotly_chart(fig_cum)
         
         # Gráfica: Drawdown
         st.write(f"Drawdown de {etf}")
-        fig_dd = px.line(
-            drawdown, title=f"Drawdown ({etf})",
-            labels={"index": "Fecha", "value": "Drawdown"}, template="plotly_white"
-        )
+        fig_dd = px.line(drawdown, title=f"Drawdown ({etf})",
+                         labels={"index": "Fecha", "value": "Drawdown"}, template="plotly_white")
         st.plotly_chart(fig_dd)
         
         # Gráfica: Watermark
         st.write(f"Watermark de {etf}")
-        fig_wm = px.line(
-            watermark, title=f"Watermark ({etf})",
-            labels={"index": "Fecha", "value": "Valor Máximo Acumulado"}, template="plotly_white"
-        )
+        fig_wm = px.line(watermark, title=f"Watermark ({etf})",
+                         labels={"index": "Fecha", "value": "Valor Máximo Acumulado"}, template="plotly_white")
         st.plotly_chart(fig_wm)
     
     # Gráfica: Rendimientos acumulados de todos los ETFs
     st.subheader("Rendimientos Acumulados de Todos los ETFs")
     cumulative_returns_all = (returns + 1).cumprod() - 1
-    fig_all_cum = px.line(
-        cumulative_returns_all, title="Rendimientos Acumulados de Todos los ETFs (2010-2023)",
-        labels={"index": "Fecha", "value": "Rendimiento Acumulado"}, template="plotly_white"
-    )
+    fig_all_cum = px.line(cumulative_returns_all, title="Rendimientos Acumulados de Todos los ETFs (2010-2023)",
+                          labels={"index": "Fecha", "value": "Rendimiento Acumulado"}, template="plotly_white")
     st.plotly_chart(fig_all_cum)
 
     # Calcular la matriz de correlaciones entre los rendimientos diarios
     st.subheader("Mapa de Calor de la Matriz de Correlaciones entre los Rendimientos Diarios")
-    correlation_matrix = returns.corr()
-
-    # Crear el heatmap con Plotly
+    correlation_matrix = returns.corr()  # Asegúrate de que returns esté definido correctamente
     fig_heatmap = px.imshow(
-        correlation_matrix, text_auto=True, title="Matriz de Correlaciones entre los Rendimientos Diarios",
-        labels={"color": "Correlación"}, template="plotly_white", color_continuous_scale=px.colors.sequential.Viridis
+        correlation_matrix, 
+        text_auto=True, 
+        title="Matriz de Correlaciones entre los Rendimientos Diarios",
+        labels={"color": "Correlación"}, 
+        template="plotly_white", 
+        color_continuous_scale=px.colors.sequential.Viridis  # Escala de colores compatible
     )
     st.plotly_chart(fig_heatmap)
-
 
 # --- Portafolios Óptimos ---
 with tabs[3]:
