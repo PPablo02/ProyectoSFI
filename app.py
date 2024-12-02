@@ -309,13 +309,12 @@ with tabs[2]:
     fig_all_cum = px.line(cumulative_returns_all, title="Rendimientos Acumulados de Todos los ETFs (2010-2023)",
                           labels={"index": "Fecha", "value": "Rendimiento Acumulado"}, template="plotly_white")
     st.plotly_chart(fig_all_cum)
-    
-    # Heatmap de la matriz de correlaciones entre rendimientos diarios
-    st.subheader("Mapa de Calor de la Matriz de Correlaciones entre los Rendimientos Diarios")
-    correlation_matrix = returns.corr()
+
+    # Heatmap de la matriz de correlación
     fig_heatmap = px.imshow(correlation_matrix, text_auto=True, title="Matriz de Correlaciones",
-                            labels={"color": "Correlación"}, template="plotly_white", color_continuous_scale="coolwarm")
-    st.plotly_chart(fig_heatmap)
+                        labels={"color": "Correlación"}, template="plotly_white", 
+                        color_continuous_scale=px.colors.sequential.Viridis)  # Escala compatible con Plotly
+
 
 # --- Portafolios Óptimos ---
 with tabs[3]:
