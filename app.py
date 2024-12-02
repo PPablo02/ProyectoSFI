@@ -216,6 +216,14 @@ def black_litterman_optimizar(retornos, P, Q, tau=0.05, metodo="min_vol"):
     # Optimización de Markowitz usando la media ajustada
     return optimizar_portafolio_markowitz(retornos, metodo=metodo)
 
+# Descargar datos históricos para el periodo 2010-2020
+datos_2010_2020 = cargar_datos(tickers.keys(), "2010-01-01", "2020-01-01")
+retornos_2010_2020 = pd.DataFrame({k: v["Retornos"] for k, v in datos_2010_2020.items()}).dropna()
+
+# Descargar datos históricos para el periodo 2021-2023
+datos_2021_2023 = cargar_datos(tickers.keys(), "2021-01-01", "2023-01-01")
+retornos_2021_2023 = pd.DataFrame({k: v["Retornos"] for k, v in datos_2021_2023.items()}).dropna()
+
 # --- Configuración de Streamlit ---
 st.title("Proyecto de Optimización de Portafolios")
 
