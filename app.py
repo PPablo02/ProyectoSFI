@@ -310,10 +310,22 @@ with tabs[2]:
                           labels={"index": "Fecha", "value": "Rendimiento Acumulado"}, template="plotly_white")
     st.plotly_chart(fig_all_cum)
 
-    # Heatmap de la matriz de correlación
-    fig_heatmap = px.imshow(correlation_matrix, text_auto=True, title="Matriz de Correlaciones",
-                        labels={"color": "Correlación"}, template="plotly_white", 
-                        color_continuous_scale=px.colors.sequential.Viridis)  # Escala compatible con Plotly
+    # Calcular la matriz de correlaciones entre los rendimientos diarios
+    st.subheader("Mapa de Calor de la Matriz de Correlaciones entre los Rendimientos Diarios")
+
+    correlation_matrix = returns.corr()  # Asegúrate de que returns esté definido correctamente
+
+    # Crear el heatmap con Plotly
+    fig_heatmap = px.imshow(
+        correlation_matrix, 
+        text_auto=True, 
+        title="Matriz de Correlaciones entre los Rendimientos Diarios",
+        labels={"color": "Correlación"}, 
+        template="plotly_white", 
+        color_continuous_scale=px.colors.sequential.Viridis  # Escala de colores compatible
+    )
+    
+    st.plotly_chart(fig_heatmap)
 
 
 # --- Portafolios Óptimos ---
