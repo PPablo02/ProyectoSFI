@@ -262,8 +262,8 @@ with tabs[2]:
         st.write(metricas)
 
         # Graficar distribución de retornos
-        fig = px.histogram(datos_2010_2023[ticker]['Retornos'].dropna(), 
-                           x="Retornos", nbins=50, 
+        fig = px.histogram(datos_2010_2023[ticker]['Retornos'].dropna(),
+                           x="Retornos", nbins=50,
                            title=f"Distribución de Retornos - {info['nombre']}")
         st.plotly_chart(fig)
 
