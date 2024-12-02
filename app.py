@@ -8,6 +8,8 @@ import numpy as np
 from scipy.optimize import minimize
 from scipy.stats import skew, kurtosis
 from datetime import datetime
+import requests
+from bs4 import BeautifulSoup
 
 # --- Funciones Auxiliares ---
 @st.cache_data
@@ -21,21 +23,37 @@ def cargar_datos(tickers, inicio, fin):
     return datos
 
 def obtener_informacion_etf(ticker):
-    """Obtiene información detallada del ETF desde Yahoo Finance."""
+    """Obtiene información detallada del ETF desde Yahoo Finance y extrae más detalles si es posible."""
     etf = yf.Ticker(ticker)
     info = etf.info
+    
+    # Intentamos obtener información adicional desde la página oficial del ETF usando BeautifulSoup
+    url = f"https://finance.yahoo.com/quote/{ticker}/holdings"
+    page = requests.get(url)
+    soup = BeautifulSoup(page.content, "html.parser")
+    
+    # Extracción de los principales holdings
+    holdings = []
+    for row in soup.find_all('tr')[1:]:
+        columns = row.find_all('td')
+        if len(columns) > 0:
+            holding = columns[0].text.strip()
+            holding_percent = columns[1].text.strip()
+            holdings.append({"symbol": holding, "holdingPercent": holding_percent})
+
     return {
         "nombre": info.get('shortName', 'No disponible'),
         "descripcion": info.get('longBusinessSummary', 'No disponible'),
         "sector": info.get('sector', 'No disponible'),
         "categoria": info.get('category', 'No disponible'),
         "exposicion_geografica": info.get('region', 'No disponible'),
-        "composicion": info.get('topHoldings', 'No disponible'),
+        "composicion": holdings if holdings else 'No disponible',
         "gastos": info.get('expenseRatio', 'No disponible'),
         "rango_1y": info.get('fiftyTwoWeekRange', 'No disponible'),
         "rendimiento_ytd": info.get('ytdReturn', 'No disponible'),
         "moneda": info.get('currency', 'No disponible'),
-        "beta": info.get('beta', 'No disponible')
+        "beta": info.get('beta', 'No disponible'),
+        "url": f"https://finance.yahoo.com/quote/{ticker}"
     }
 
 def calcular_metricas(df, nivel_VaR=[0.95, 0.975, 0.99]):
