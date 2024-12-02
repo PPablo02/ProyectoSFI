@@ -107,18 +107,52 @@ def cargar_datos(tickers, inicio, fin):
         datos[ticker] = df
     return datos
 
+def calcular_metricas(df, nivel_VaR=[0.95, 0.975, 0.99]):
+    """Calcula métricas estadísticas clave, incluyendo VaR y beta."""
+    retornos = df['Retornos'].dropna()
+
+    # Calcular métricas básicas
+    media = np.mean(retornos) * 100
+    volatilidad = np.std(retornos) * 100
+    sesgo = skew(retornos)
+    curtosis = kurtosis(retornos)
+
+    # VaR y CVaR
+    VaR = {f"VaR {nivel*100}%": np.percentile(retornos, (1 - nivel) * 100) for nivel in nivel_VaR}
+    cVaR = {f"CVaR {nivel*100}%": retornos[retornos <= np.percentile(retornos, (1 - nivel) * 100)].mean() for nivel in nivel_VaR}
+
+    # Sharpe Ratio
+    sharpe = np.mean(retornos) / np.std(retornos) if np.std(retornos) != 0 else np.nan
+
+    # Beta
+    sp500 = yf.download("^GSPC", start=df.index[0], end=df.index[-1])['Adj Close']
+    sp500_retornos = sp500.pct_change().dropna()
+    retornos_alineados = retornos.reindex(sp500_retornos.index).dropna()
+    sp500_retornos_alineados = sp500_retornos.reindex(retornos_alineados.index).dropna()
+
+    if len(retornos_alineados) > 0 and len(sp500_retornos_alineados) > 0:
+        covarianza = np.cov(retornos_alineados, sp500_retornos_alineados)[0, 1]
+        var_sp500 = np.var(sp500_retornos_alineados)
+        beta = covarianza / var_sp500 if var_sp500 != 0 else np.nan
+    else:
+        beta = np.nan
+
+    metrics = {
+        "Media (%)": media,
+        "Volatilidad (%)": volatilidad,
+        "Sesgo": sesgo,
+        "Curtosis": curtosis,
+        **VaR,
+        **cVaR,
+        "Sharpe Ratio": sharpe,
+        "Beta": beta
+    }
+
+    return pd.DataFrame(metrics, index=["Valor"]).T
+
+# --- Funciones de Optimización de Portafolios ---
 def optimizar_portafolio_markowitz(retornos, metodo="min_vol", objetivo=None):
-    """
-    Optimiza el portafolio de acuerdo con el modelo de Markowitz.
-    
-    Parameters:
-    - retornos: DataFrame con los retornos de cada activo.
-    - metodo: "min_vol" para mínima volatilidad o "sharpe" para maximizar el Sharpe Ratio.
-    - objetivo: rendimiento objetivo en caso de optimización para rendimiento objetivo.
-    
-    Returns:
-    - Pesos del portafolio óptimo.
-    """
+    # Función para optimizar el portafolio según el modelo de Markowitz
     media = retornos.mean()
     cov = retornos.cov()
 
@@ -191,8 +225,8 @@ tabs = st.tabs(["Introducción", "Selección de ETF's", "Estadísticas de los ET
 # --- Introducción ---
 with tabs[0]:
     st.header("Introducción")
-    st.write("""
-    Este proyecto tiene como objetivo analizar y optimizar un portafolio utilizando ETFs en diferentes clases de activos, tales como renta fija, renta variable, y materias primas. A lo largo del proyecto, se evaluará el rendimiento de estos activos a través de diversas métricas financieras y técnicas de optimización de portafolios, como la optimización de mínima volatilidad y la maximización del Sharpe Ratio.
+    st.write(""" 
+    Este proyecto tiene como objetivo analizar y optimizar un portafolio utilizando ETFs en diferentes clases de activos, tales como renta fija, renta variable, y materias primas. A lo largo del proyecto, se evaluará el rendimiento de estos activos a través de diversas métricas financieras y técnicas de optimización de portafolios, como la optimización de mínima volatilidad y la maximización del Sharpe Ratio. 
     """)
 
 # --- Selección de ETF's ---
@@ -222,8 +256,6 @@ with tabs[1]:
         st.write(info['duracion'])
         st.write("### Principales Contribuidores (Top Holdings):")
         st.write(pd.DataFrame(info['top_holdings']))
-
-        # Graficar el rendimiento histórico
         fig = px.line(datos_2010_2023[ticker], x=datos_2010_2023[ticker].index, y=datos_2010_2023[ticker]['Close'].values.flatten(), title=f"Precio de Cierre - {info['nombre']}")
         st.plotly_chart(fig)
 
@@ -234,20 +266,14 @@ with tabs[2]:
         st.subheader(f"{descripcion['nombre']} ({ticker})")
         metricas = calcular_metricas(datos_2010_2023[ticker])
         st.write(metricas)
-
-        # Graficar distribución de retornos
         fig = px.histogram(datos_2010_2023[ticker].dropna(), x="Retornos", nbins=50, title=f"Distribución de Retornos - {descripcion['nombre']}")
         st.plotly_chart(fig)
 
 # --- Portafolios Óptimos ---
 with tabs[3]:
     st.header("Portafolios Óptimos (2010-2020)")
-
-    # Descargar datos históricos para el periodo 2010-2020
     datos_2010_2020 = cargar_datos(tickers.keys(), "2010-01-01", "2020-01-01")
     retornos_2010_2020 = pd.DataFrame({k: v["Retornos"] for k, v in datos_2010_2020.items()}).dropna()
-
-    # 1. Portafolio de Mínima Volatilidad
     st.subheader("Portafolio de Mínima Volatilidad")
     pesos_min_vol = optimizar_portafolio_markowitz(retornos_2010_2020, metodo="min_vol")
     st.write("Pesos del Portafolio de Mínima Volatilidad:")
@@ -256,52 +282,22 @@ with tabs[3]:
     fig_min_vol = px.bar(x=list(tickers.keys()), y=pesos_min_vol, title="Pesos - Mínima Volatilidad")
     st.plotly_chart(fig_min_vol)
 
-    # 2. Portafolio de Máximo Sharpe Ratio
-    st.subheader("Portafolio de Máximo Sharpe Ratio")
-    pesos_sharpe = optimizar_portafolio_markowitz(retornos_2010_2020, metodo="sharpe")
-    st.write("Pesos del Portafolio de Máximo Sharpe Ratio:")
-    for ticker, peso in zip(tickers.keys(), pesos_sharpe):
-        st.write(f"{ticker}: {peso:.2%}")
-    fig_sharpe = px.bar(x=list(tickers.keys()), y=pesos_sharpe, title="Pesos - Máximo Sharpe Ratio")
-    st.plotly_chart(fig_sharpe)
-
-    # 3. Portafolio de Rendimiento Objetivo
-    st.subheader("Portafolio de Rendimiento Objetivo (10% Anual)")
-    rendimiento_objetivo = 0.10 / 252  # Rendimiento diario objetivo
-    pesos_target = optimizar_portafolio_markowitz(retornos_2010_2020, metodo="target", objetivo=rendimiento_objetivo)
-    st.write("Pesos del Portafolio de Rendimiento Objetivo:")
-    for ticker, peso in zip(tickers.keys(), pesos_target):
-        st.write(f"{ticker}: {peso:.2%}")
-    fig_target = px.bar(x=list(tickers.keys()), y=pesos_target, title="Pesos - Rendimiento Objetivo (10% Anual)")
-    st.plotly_chart(fig_target)
-
-
 # --- Backtesting ---
 with tabs[4]:
     st.header("Backtesting (2021-2023)")
-
-    # Descargar datos históricos para el periodo 2021-2023
     datos_2021_2023 = cargar_datos(tickers.keys(), "2021-01-01", "2023-01-01")
     retornos_2021_2023 = pd.DataFrame({k: v["Retornos"] for k, v in datos_2021_2023.items()}).dropna()
-
-    # Crear DataFrame para guardar los rendimientos acumulados de cada portafolio
     rendimientos_acumulados = pd.DataFrame(index=retornos_2021_2023.index)
-
-    # Calcular rendimientos acumulados para cada portafolio
     st.subheader("Rendimientos Acumulados de los Portafolios")
     for nombre, pesos in [
         ("Mínima Volatilidad", pesos_min_vol),
         ("Máximo Sharpe Ratio", pesos_sharpe),
-        ("Rendimiento Objetivo", pesos_target)
     ]:
-        # Asegurarse de que los pesos sean un vector columna
-        pesos_reshaped = np.array(pesos).reshape(-1, 1)  # Convertir pesos a columna
-        rendimientos = retornos_2021_2023.dot(pesos_reshaped)  # Multiplicar retornos con los pesos
-        rendimientos_acumulados[nombre] = rendimientos.cumsum()  # Sumar rendimientos acumulados
+        pesos_reshaped = np.array(pesos).reshape(-1, 1)
+        rendimientos = retornos_2021_2023.dot(pesos_reshaped)
+        rendimientos_acumulados[nombre] = rendimientos.cumsum()
         st.write(f"Rendimientos Acumulados - {nombre}")
         st.line_chart(rendimientos.cumsum())
-
-    # Graficar todos los portafolios en una sola gráfica
     fig_rendimientos = px.line(
         rendimientos_acumulados,
         title="Rendimientos Acumulados - Comparación de Portafolios",
@@ -309,22 +305,9 @@ with tabs[4]:
     )
     st.plotly_chart(fig_rendimientos)
 
-    # Heatmap de correlación entre ETFs
-    st.subheader("Correlación entre ETFs")
-    correlacion = retornos_2021_2023.corr()
-    fig_correlacion = px.imshow(
-        correlacion,
-        text_auto=True,
-        title="Heatmap de Correlación de ETFs",
-        labels=dict(color="Correlación")
-    )
-    st.plotly_chart(fig_correlacion)
-
 # --- Modelo de Black-Litterman ---
 with tabs[5]:
     st.header("Modelo de Optimización Black-Litterman")
-
-    # Definir las perspectivas (views) sobre los activos
     P = np.array([
         [1, 0, 0, 0, 0],  # TLT tiene un rendimiento esperado de 3%
         [0, 1, 0, 0, 0],  # EMB tiene un rendimiento esperado de 6%
@@ -332,16 +315,10 @@ with tabs[5]:
         [0, 0, 0, 1, 0],  # VWO tiene un rendimiento esperado de 11%
         [0, 0, 0, 0, 1]   # GLD tiene un rendimiento esperado de 4%
     ])
-
-    Q = np.array([0.03, 0.06, 0.08, 0.11, 0.04])  # Los rendimientos esperados de cada activo según las perspectivas
-
-    # Aplicar el modelo de Black-Litterman para optimizar el portafolio
+    Q = np.array([0.03, 0.06, 0.08, 0.11, 0.04])
     pesos_black_litterman = black_litterman_optimizar(retornos_2010_2020, P, Q)
-
     st.write("Pesos del Portafolio Ajustado con el Modelo de Black-Litterman:")
     for ticker, peso in zip(tickers.keys(), pesos_black_litterman):
         st.write(f"{ticker}: {peso:.2%}")
-
-    # Graficar la distribución de pesos ajustada
     fig_black_litterman = px.bar(x=list(tickers.keys()), y=pesos_black_litterman, title="Pesos Ajustados - Black-Litterman")
     st.plotly_chart(fig_black_litterman)
