@@ -47,6 +47,47 @@ def optimizar_portafolio(retornos, metodo="min_vol", objetivo=None):
     resultado = minimize(objetivo_funcion, w_inicial, constraints=restricciones, bounds=limites)
     return resultado.x
 
+def calcular_metricas(df, nivel_VaR=[0.95, 0.975, 0.99]):
+    """Calcula métricas estadísticas clave, incluyendo VaR a diferentes niveles."""
+    retornos = df['Retornos'].dropna()
+    
+    # Calcular la media y volatilidad
+    media = np.mean(retornos) * 100  # Convertir a porcentaje
+    volatilidad = np.std(retornos) * 100  # Convertir a porcentaje
+    
+    # Calcular el sesgo y curtosis
+    sesgo = skew(retornos)
+    curtosis = kurtosis(retornos)
+    
+    # Calcular el VaR a diferentes niveles
+    VaR = {f"VaR {nivel*100}%": np.percentile(retornos, (1 - nivel) * 100) for nivel in nivel_VaR}
+    
+    # Calcular el CVaR (Conditional VaR)
+    cVaR = {f"CVaR {nivel*100}%": retornos[retornos <= np.percentile(retornos, (1 - nivel) * 100)].mean() for nivel in nivel_VaR}
+    
+    # Calcular el Sharpe Ratio
+    sharpe = np.mean(retornos) / np.std(retornos) if np.std(retornos) != 0 else np.nan
+    
+    # Calcular el Beta (relación entre los retornos del ETF y el mercado)
+    # Aquí asumimos que el mercado está representado por el S&P 500
+    sp500 = yf.download("^GSPC", start=df.index[0], end=df.index[-1])['Adj Close']
+    sp500_retornos = sp500.pct_change().dropna()
+    beta = np.cov(retornos, sp500_retornos)[0][1] / np.var(sp500_retornos)
+    
+    # Crear un diccionario con todas las métricas
+    metrics = {
+        "Media (%)": media,
+        "Volatilidad (%)": volatilidad,
+        "Sesgo": sesgo,
+        "Curtosis": curtosis,
+        **VaR,
+        **cVaR,
+        "Sharpe Ratio": sharpe,
+        "Beta": beta
+    }
+    
+    return pd.DataFrame(metrics, index=["Valor"]).T
+
 # --- Configuración de Streamlit ---
 st.title("Proyecto de Optimización de Portafolios")
 
@@ -211,19 +252,3 @@ with tabs[2]:
         # Graficar distribución de retornos
         fig = px.histogram(datos_2010_2023[ticker].dropna(), x="Retornos", nbins=50, title=f"Distribución de Retornos - {descripcion['nombre']}")
         st.plotly_chart(fig)
-
-# --- Portafolios Óptimos ---
-with tabs[3]:
-    st.header("Portafolios Óptimos (2010-2020)")
-    datos_2010_2020 = cargar_datos(tickers_lista, "2010-01-01", "2020-01-01")
-    retornos_2010_2020 = pd.DataFrame({k: v["Retornos"] for k, v in datos_2010_2020.items()}).dropna()
-
-    # 1. Mínima Volatilidad
-    st.subheader("Portafolio de Mínima Volatilidad")
-    pesos_min_vol = optimizar_portafolio(retornos_2010_2020, metodo="min_vol")
-    st.write("Pesos Óptimos (Mínima Volatilidad):")
-    for ticker, peso in zip(tickers_lista, pesos_min_vol):
-        st.write(f"{ticker}: {peso:.2%}")
-    fig = px.bar(x=tickers_lista, y=pesos_min_vol, title="Pesos - Mínima Volatilidad")
-    st.plotly_chart(fig)
-
