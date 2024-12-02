@@ -230,6 +230,7 @@ with tabs[0]:
     """)
 
 # --- Selección de ETF's ---
+datos_2010_2023 = cargar_datos(tickers.keys(), "2010-01-01", "2023-01-01")
 with tabs[1]:
     st.header("Selección de ETF's")
     for ticker, info in tickers.items():
