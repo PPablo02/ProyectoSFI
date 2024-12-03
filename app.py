@@ -266,7 +266,7 @@ with tabs[1]:
         fig = px.line(datos_2010_2023[ticker],
                       x=datos_2010_2023[ticker].index,
                       y=datos_2010_2023[ticker]['Close'].values.flatten(),
-                      title=f"Precio de Cierre - {info['nombre']}")
+                      title=f"Precio de Cierre - {info[tickers.keys()]}")
         st.plotly_chart(fig)
 
 # --- Estadísticas de los ETF's ---
