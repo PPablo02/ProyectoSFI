@@ -299,8 +299,8 @@ with tabs[2]:
         volatilidad = retornos.std() * 100
         sesgo = skew(retornos)
         curtosis = kurtosis(retornos)
-        sharpe = media / volatilidad if volatilidad != 0 else np.nan
-        sortino = media / retornos[retornos < 0].std() if retornos[retornos < 0].std() != 0 else np.nan
+        sharpe = media / volatilidad 
+        sortino = media / retornos[retornos < 0].std() 
         VaR_95 = np.percentile(retornos, 5)
         CVaR_95 = retornos[retornos <= VaR_95].mean()
 
