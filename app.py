@@ -238,10 +238,10 @@ with tabs[0]:
     """)
 
 # --- Selección de ETF's ---
-hoy = datetime.today().strftime("%Y-%m-%d")
-datos_2010_hoy = cargar_datos(list(tickers.keys()), "2010-01-01", hoy)
 with tabs[1]:
     st.header("Selección de ETF's")
+    hoy = datetime.today().strftime("%Y-%m-%d")
+    datos_2010_hoy = cargar_datos(list(tickers.keys()), "2010-01-01", hoy)
 
     # Crear un DataFrame consolidado con las características de los ETFs
     etf_caracteristicas = pd.DataFrame({
@@ -273,6 +273,7 @@ with tabs[1]:
 
 # --- Estadísticas de los ETF's ---
 with tabs[2]:
+    datos_2010_2023 = cargar_datos(list(tickers.keys()), "2010-01-01", "2023-01-01")
     st.header("Estadísticas de los ETF's (2010-2023)")
     for ticker, descripcion in tickers.items():
         st.subheader(f"{descripcion['nombre']} ({ticker})")
