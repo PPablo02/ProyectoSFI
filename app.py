@@ -361,15 +361,18 @@ with tabs[2]:
 
         # 4. Serie de tiempo del precio con drawdowns y watermark
         st.write("### Serie de Tiempo del Precio con Drawdowns y Watermark")
+        # Convertir 'precios' a unidimensional
+        precios_unidimensional = precios.values.flatten()
+
         fig_drawdown = px.line(
             x=data.index,
-            y=precios,
+            y=precios_unidimensional,  # Ahora es unidimensional
             title=f"Precio del ETF - {descripcion['nombre']}",
             labels={"x": "Fecha", "y": "Precio del ETF"}
         )
         # Añadir Watermark y Drawdowns como capas
         fig_drawdown.add_scatter(x=data.index, y=watermark, mode="lines", name="Watermark", line=dict(color="blue", dash="dash"))
-        fig_drawdown.add_scatter(x=data.index, y=precios + (drawdown * precios), mode="lines", name="Drawdown", line=dict(color="red", dash="dot"))
+        fig_drawdown.add_scatter(x=data.index, y=precios_unidimensional + (drawdown * precios_unidimensional), mode="lines", name="Drawdown", line=dict(color="red", dash="dot"))
         st.plotly_chart(fig_drawdown)
 
 
