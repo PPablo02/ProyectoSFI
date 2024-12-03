@@ -237,7 +237,8 @@ with tabs[0]:
     """)
 
 # --- Selección de ETF's ---
-datos_2010_hoy = cargar_datos(list(tickers.keys()), "2010-01-01", datetime.today().strftime("%Y-%m-%d"))
+hoy = datetime.today().strftime("%Y-%m-%d")
+datos_2010_hoy = cargar_datos(list(tickers.keys()), "2010-01-01", hoy)
 with tabs[1]:
     st.header("Selección de ETF's")
 
