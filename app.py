@@ -108,8 +108,8 @@ def cargar_datos(tickers, inicio, fin):
         datos[ticker] = df
     return datos
 
-def calcular_metricas(df, nivel_VaR=[0.95, 0.975, 0.99]):
-    """Calcula métricas estadísticas clave, incluyendo VaR y beta."""
+def calcular_metricas(df, nivel_VaR=[0.95, 0.975, 0.99], risk_free_rate=0.02, target_return=0):
+    """Calcula métricas estadísticas clave, incluyendo VaR, CVaR, Sharpe Ratio, Sortino, y otros."""
     retornos = df['Retornos'].dropna()
 
     # Calcular métricas básicas
@@ -122,42 +122,138 @@ def calcular_metricas(df, nivel_VaR=[0.95, 0.975, 0.99]):
     VaR = {f"VaR {nivel*100}%": np.percentile(retornos, (1 - nivel) * 100) for nivel in nivel_VaR}
     cVaR = {f"CVaR {nivel*100}%": retornos[retornos <= np.percentile(retornos, (1 - nivel) * 100)].mean() for nivel in nivel_VaR}
 
-    # Sharpe Ratio
-    sharpe = np.mean(retornos) / np.std(retornos) if np.std(retornos) != 0 else np.nan
+    # Calcular Sharpe Ratio usando la función
+    sharpe = calcular_sharpe_ratio(retornos, risk_free_rate)
 
-    # Beta
-    sp500 = yf.download("^GSPC", start=df.index[0], end=df.index[-1])['Adj Close']
-    sp500_retornos = sp500.pct_change().dropna()
-    retornos_alineados = retornos.reindex(sp500_retornos.index).dropna()
-    sp500_retornos_alineados = sp500_retornos.reindex(retornos_alineados.index).dropna()
+    # Calcular Sortino Ratio usando la nueva función
+    sortino = calcular_sortino_ratio(retornos, risk_free_rate, target_return)
 
-    # Alinear ambas series utilizando el índice compartido
-    indice_comun = retornos_alineados.index.intersection(sp500_retornos_alineados.index)
-    retornos_alineados = retornos_alineados.loc[indice_comun]
-    sp500_retornos_alineados = sp500_retornos_alineados.loc[indice_comun]
-    
-    # Convertir a arreglos bidimensionales explícitamente
-    retornos_alineados = retornos_alineados.values.flatten()
-    sp500_retornos_alineados = sp500_retornos_alineados.values.flatten()
-    
-    if len(retornos_alineados) > 0 and len(sp500_retornos_alineados) > 0:
-        covarianza = np.cov(retornos_alineados, sp500_retornos_alineados)[0, 1]
-        var_sp500 = np.var(sp500_retornos_alineados)
-        beta = covarianza / var_sp500 if var_sp500 != 0 else np.nan
-    else:
-        beta = np.nan
-        metrics = {
-            "Media (%)": media,
-            "Volatilidad (%)": volatilidad,
-            "Sesgo": sesgo,
-            "Curtosis": curtosis,
-            **VaR,
-            **cVaR,
-            "Sharpe Ratio": sharpe,
-            "Beta": beta
-        }
-    
-        return pd.DataFrame(metrics, index=["Valor"]).T
+    # Drawdown
+    drawdown = (df['Close'] / df['Close'].cummax()) - 1
+
+    # Crear un diccionario de todas las métricas calculadas
+    metrics = {
+        "Media (%)": media,
+        "Volatilidad (%)": volatilidad,
+        "Sesgo": sesgo,
+        "Curtosis": curtosis,
+        **VaR,
+        **cVaR,
+        "Sharpe Ratio": sharpe,
+        "Sortino Ratio": sortino,
+        "Drawdown Max (%)": drawdown.min() * 100
+    }
+
+    return metrics, drawdown
+
+def graficar_drawdown_financiero(precios, titulo="Análisis de Drawdown"):
+    """Crea gráfico de precios y drawdown en subplots"""
+    drawdown, hwm = calcular_drawdown(precios)
+
+    # Crear figura con subplots
+    fig = make_subplots(rows=2, cols=1,
+                       shared_xaxes=True,
+                       vertical_spacing=0.05,
+                       row_heights=[0.7, 0.3])
+
+    # Subplot 1: Precios y HWM
+    fig.add_trace(
+        go.Scatter(
+            x=precios.index,
+            y=precios.values,
+            name='Precio',
+            line=dict(color='blue'),
+        ),
+        row=1, col=1
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=hwm.index,
+            y=hwm.values,
+            name='High Water Mark',
+            line=dict(color='green', dash='dash'),
+        ),
+        row=1, col=1
+    )
+
+    # Subplot 2: Drawdown
+    fig.add_trace(
+        go.Scatter(
+            x=drawdown.index,
+            y=drawdown.values,
+            name='Drawdown',
+            line=dict(color='red'),
+            fill='tozeroy',
+            fillcolor='rgba(255,0,0,0.1)'
+        ),
+        row=2, col=1
+    )
+
+    # Línea horizontal en 0 para el drawdown
+    fig.add_hline(
+        y=0,
+        line_dash="dash",
+        line_color="gray",
+        opacity=0.5,
+        row=2
+    )
+
+    # Actualizar layout
+    fig.update_layout(
+        title=titulo,
+        height=800,  # Altura total de la figura
+        showlegend=True,
+        legend=dict(
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=0.01
+        ),
+        hovermode='x unified'
+    )
+
+    # Actualizar ejes Y
+    fig.update_yaxes(title="Precio", row=1, col=1)
+    fig.update_yaxes(
+        title="Drawdown %",
+        tickformat=".1%",
+        range=[-1, 0.1],  # Límites del drawdown entre -100% y 10%
+        row=2,
+        col=1
+    )
+
+    # Actualizar eje X
+    fig.update_xaxes(title="Fecha", row=2, col=1)
+
+    return fig
+
+def obtener_max_drawdown_info(precios):
+    """Obtiene información detallada del máximo drawdown"""
+    drawdown, _ = calcular_drawdown(precios)
+
+    max_drawdown = drawdown.min()
+    fecha_max_drawdown = drawdown.idxmin()
+    pico_anterior = precios[:fecha_max_drawdown].idxmax()
+
+    datos_posteriores = drawdown[fecha_max_drawdown:]
+    fechas_recuperacion = datos_posteriores[datos_posteriores >= 0]
+    fecha_recuperacion = fechas_recuperacion.index[0] if len(fechas_recuperacion) > 0 else None
+
+    duracion_caida = (fecha_max_drawdown - pico_anterior).days
+    duracion_recuperacion = (fecha_recuperacion - fecha_max_drawdown).days if fecha_recuperacion else None
+    duracion_total = (fecha_recuperacion - pico_anterior).days if fecha_recuperacion else None
+
+    return {
+        'max_drawdown': max_drawdown * 100,
+        'fecha_pico': pico_anterior,
+        'fecha_valle': fecha_max_drawdown,
+        'fecha_recuperacion': fecha_recuperacion,
+        'duracion_caida': duracion_caida,
+        'duracion_recuperacion': duracion_recuperacion,
+        'duracion_total': duracion_total
+    }
+
 
 # --- Funciones de Optimización de Portafolios ---
 def optimizar_portafolio_markowitz(retornos, metodo="min_vol", objetivo=None):
@@ -191,7 +287,7 @@ def optimizar_portafolio_markowitz(retornos, metodo="min_vol", objetivo=None):
         objetivo_funcion = riesgo
     
     # Definir los límites de los pesos (entre 0 y 1)
-    limites = [(0, 1) for _ in range(n)]
+    limites = [(-1, 1) for _ in range(n)]
     
     # Optimización
     resultado = minimize(objetivo_funcion, w_inicial, constraints=restricciones, bounds=limites)
