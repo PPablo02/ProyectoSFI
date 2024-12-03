@@ -98,14 +98,30 @@ tickers = {
 }
 
 # --- Funciones Auxiliares ---
+
 def cargar_datos(tickers, inicio, fin):
-    """Descarga datos históricos para una lista de tickers desde Yahoo Finance."""
+    """Descarga datos históricos para una lista de tickers desde Yahoo Finance.
+       La función maneja tanto columnas unidimensionales como DataFrames con varias columnas."""
     datos = {}
     for ticker in tickers:
+        # Descargar los datos históricos desde Yahoo Finance
         df = yf.download(ticker, start=inicio, end=fin)
-        df['Retornos'] = df['Close'].pct_change()
+        
+        # Verificar si los datos descargados tienen más de una columna
+        if df.shape[1] == 1:
+            # Si solo hay una columna, asumimos que es la columna "Close"
+            df['Retornos'] = df.iloc[:, 0].pct_change()
+        elif "Close" in df.columns:
+            # Si hay varias columnas, calculamos los retornos de la columna "Close"
+            df['Retornos'] = df['Close'].pct_change()
+        else:
+            # Si no se encuentra "Close", asignamos NaN a los retornos
+            df['Retornos'] = np.nan
+        
+        # Guardar el DataFrame con los datos
         datos[ticker] = df
     return datos
+
 
 def calcular_metricas(df, nivel_VaR=[0.95, 0.975, 0.99]):
     """Calcula métricas estadísticas clave, incluyendo VaR y beta."""
