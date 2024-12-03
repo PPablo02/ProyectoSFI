@@ -266,7 +266,7 @@ with tabs[1]:
         fig = px.line(
             datos_2010_2023[ticker],
             x=datos_2010_2023[ticker].index,
-            y="Close",
+            y=datos_2010_2023[ticker]["Close"],
             title=f"Precio de Cierre del {info['nombre']}",
         )
         st.plotly_chart(fig)
