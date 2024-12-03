@@ -279,10 +279,10 @@ with tabs[2]:
     datos_2010_2023 = cargar_datos(list(tickers.keys()), "2010-01-01", "2023-01-01")
 
     # Función auxiliar para calcular Drawdown y Watermark
-    def calcular_drawdown_y_watermark(retornos_acumulados):
-        """Calcula el drawdown y el watermark."""
-        watermark = retornos_acumulados.cummax()
-        drawdown = (retornos_acumulados / watermark) - 1
+    def calcular_drawdown_y_watermark(precios):
+        """Calcula el drawdown y el watermark basado en precios."""
+        watermark = precios.cummax()  # Máximo acumulado
+        drawdown = (precios / watermark) - 1  # Pérdida relativa desde el máximo
         return drawdown, watermark
 
     # Loop para procesar cada ETF
@@ -291,6 +291,7 @@ with tabs[2]:
 
         # Datos de rendimientos diarios
         data = datos_2010_2023[ticker].dropna()
+        precios = data["Close"]  # Precios del ETF
         retornos = data["Retornos"]
 
         # Calcular métricas estadísticas
@@ -303,9 +304,8 @@ with tabs[2]:
         VaR_95 = np.percentile(retornos, 5)
         CVaR_95 = retornos[retornos <= VaR_95].mean()
 
-        # Rendimientos acumulados y Drawdown
-        retornos_acumulados = (1 + retornos).cumprod()
-        drawdown, watermark = calcular_drawdown_y_watermark(retornos_acumulados)
+        # Calcular Drawdown y Watermark
+        drawdown, watermark = calcular_drawdown_y_watermark(precios)
 
         # 1. Mostrar métricas en tabla
         st.write("### Tabla de Métricas")
@@ -319,7 +319,7 @@ with tabs[2]:
         st.write("### Rendimientos Acumulados")
         fig_rendimientos = px.line(
             x=data.index,
-            y=retornos_acumulados,
+            y=(1 + retornos).cumprod(),  # Rendimientos acumulados
             title=f"Rendimientos Acumulados - {descripcion['nombre']}",
             labels={"x": "Fecha", "y": "Rendimientos Acumulados"}
         )
@@ -328,9 +328,9 @@ with tabs[2]:
         # 3. Gráfica de distribución de retornos con VaR y CVaR
         st.write("### Distribución de Retornos")
         fig_dist = px.histogram(
-            retornos, 
-            nbins=50, 
-            title="Distribución de Retornos", 
+            retornos,
+            nbins=50,
+            title="Distribución de Retornos",
             labels={"value": "Retornos", "index": "Frecuencia"}
         )
         # Añadir líneas para VaR y CVaR
@@ -338,17 +338,17 @@ with tabs[2]:
         fig_dist.add_vline(x=CVaR_95, line_dash="dot", line_color="orange", annotation_text="CVaR 95%", annotation_position="top left")
         st.plotly_chart(fig_dist)
 
-        # 4. Serie de tiempo con drawdowns y watermark
-        st.write("### Serie de Tiempo con Drawdowns y Watermark")
+        # 4. Serie de tiempo del precio con drawdowns y watermark
+        st.write("### Serie de Tiempo del Precio con Drawdowns y Watermark")
         fig_drawdown = px.line(
             x=data.index,
-            y=retornos_acumulados,
-            title=f"Serie de Tiempo con Drawdowns - {descripcion['nombre']}",
-            labels={"x": "Fecha", "y": "Valor"}
+            y=precios,
+            title=f"Precio del ETF - {descripcion['nombre']}",
+            labels={"x": "Fecha", "y": "Precio del ETF"}
         )
-        # Añadir Drawdown y Watermark como áreas
+        # Añadir Watermark y Drawdowns como capas
         fig_drawdown.add_scatter(x=data.index, y=watermark, mode="lines", name="Watermark", line=dict(color="blue", dash="dash"))
-        fig_drawdown.add_scatter(x=data.index, y=retornos_acumulados + drawdown, mode="lines", name="Drawdown", line=dict(color="red", dash="dot"))
+        fig_drawdown.add_scatter(x=data.index, y=precios + (drawdown * precios), mode="lines", name="Drawdown", line=dict(color="red", dash="dot"))
         st.plotly_chart(fig_drawdown)
 
 
