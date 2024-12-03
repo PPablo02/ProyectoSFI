@@ -98,30 +98,14 @@ tickers = {
 }
 
 # --- Funciones Auxiliares ---
-
 def cargar_datos(tickers, inicio, fin):
-    """Descarga datos históricos para una lista de tickers desde Yahoo Finance.
-       La función maneja tanto columnas unidimensionales como DataFrames con varias columnas."""
+    """Descarga datos históricos para una lista de tickers desde Yahoo Finance."""
     datos = {}
     for ticker in tickers:
-        # Descargar los datos históricos desde Yahoo Finance
         df = yf.download(ticker, start=inicio, end=fin)
-        
-        # Verificar si los datos descargados tienen más de una columna
-        if df.shape[1] == 1:
-            # Si solo hay una columna, asumimos que es la columna "Close"
-            df['Retornos'] = df.iloc[:, 0].pct_change()
-        elif "Close" in df.columns:
-            # Si hay varias columnas, calculamos los retornos de la columna "Close"
-            df['Retornos'] = df['Close'].pct_change()
-        else:
-            # Si no se encuentra "Close", asignamos NaN a los retornos
-            df['Retornos'] = np.nan
-        
-        # Guardar el DataFrame con los datos
+        df['Retornos'] = df['Close'].pct_change()
         datos[ticker] = df
     return datos
-
 
 def calcular_metricas(df, nivel_VaR=[0.95, 0.975, 0.99]):
     """Calcula métricas estadísticas clave, incluyendo VaR y beta."""
@@ -289,85 +273,14 @@ with tabs[1]:
 
 # --- Estadísticas de los ETF's ---
 with tabs[2]:
-    st.header("Estadísticas de los ETF's (2010-2023)")
-
-    # Cargar los datos históricos de 2010 a 2023
     datos_2010_2023 = cargar_datos(list(tickers.keys()), "2010-01-01", "2023-01-01")
-
-    # Función auxiliar para calcular Drawdown y Watermark
-    def calcular_drawdown_y_watermark(precios):
-        """Calcula el drawdown y el watermark basado en precios."""
-        watermark = precios.cummax()  # Máximo acumulado
-        drawdown = (precios / watermark) - 1  # Pérdida relativa desde el máximo
-        return drawdown, watermark
-
-    # Loop para procesar cada ETF
+    st.header("Estadísticas de los ETF's (2010-2023)")
     for ticker, descripcion in tickers.items():
         st.subheader(f"{descripcion['nombre']} ({ticker})")
-
-        # Datos de rendimientos diarios
-        data = datos_2010_2023[ticker].dropna()
-        precios = data["Close"]  # Precios del ETF
-        retornos = precios.pct_change()  # Calcular los retornos de la columna "Close"
-
-        # Calcular métricas estadísticas
-        media = retornos.mean() * 100
-        volatilidad = retornos.std() * 100
-        sesgo = skew(retornos)
-        curtosis = kurtosis(retornos)
-        sharpe = media / volatilidad 
-        sortino = media / retornos[retornos < 0].std() 
-        VaR_95 = np.percentile(retornos, 5)
-        CVaR_95 = retornos[retornos <= VaR_95].mean()
-
-        # Calcular Drawdown y Watermark
-        drawdown, watermark = calcular_drawdown_y_watermark(precios)
-
-        # 1. Mostrar métricas en tabla
-        st.write("### Tabla de Métricas")
-        metricas = pd.DataFrame({
-            "Métrica": ["Media (%)", "Volatilidad (%)", "Sesgo", "Curtosis", "Sharpe Ratio", "Sortino Ratio", "VaR 95%", "CVaR 95%"],
-            "Valor": [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95],
-        })
-        st.dataframe(metricas)
-
-        # 2. Gráfica de rendimientos acumulados
-        st.write("### Rendimientos Acumulados")
-        fig_rendimientos = px.line(
-            x=data.index,
-            y=(1 + retornos).cumprod(),  # Rendimientos acumulados
-            title=f"Rendimientos Acumulados - {descripcion['nombre']}",
-            labels={"x": "Fecha", "y": "Rendimientos Acumulados"}
-        )
-        st.plotly_chart(fig_rendimientos)
-
-        # 3. Gráfica de distribución de retornos con VaR y CVaR
-        st.write("### Distribución de Retornos")
-        fig_dist = px.histogram(
-            retornos,
-            nbins=50,
-            title="Distribución de Retornos",
-            labels={"value": "Retornos", "index": "Frecuencia"}
-        )
-        # Añadir líneas para VaR y CVaR
-        fig_dist.add_vline(x=VaR_95, line_dash="dash", line_color="red", annotation_text="VaR 95%", annotation_position="top left")
-        fig_dist.add_vline(x=CVaR_95, line_dash="dot", line_color="orange", annotation_text="CVaR 95%", annotation_position="top left")
-        st.plotly_chart(fig_dist)
-
-        # 4. Serie de tiempo del precio con drawdowns y watermark
-        st.write("### Serie de Tiempo del Precio con Drawdowns y Watermark")
-        # Convertir precios y drawdown a arrays unidimensionales con flatten
-        fig_drawdown = px.line(
-            x=data.index,
-            y=precios.values.flatten(),  # Asegurarse de que los precios sean unidimensionales
-            title=f"Precio del ETF - {descripcion['nombre']}",
-            labels={"x": "Fecha", "y": "Precio del ETF"}
-        )
-        # Añadir Watermark y Drawdowns como capas, también aplanadas
-        fig_drawdown.add_scatter(x=data.index, y=watermark.values.flatten(), mode="lines", name="Watermark", line=dict(color="blue", dash="dash"))
-        fig_drawdown.add_scatter(x=data.index, y=(precios + (drawdown * precios)).values.flatten(), mode="lines", name="Drawdown", line=dict(color="red", dash="dot"))
-        st.plotly_chart(fig_drawdown)
-
+        metricas = calcular_metricas(datos_2010_2023[ticker])
+        st.write(metricas)
+        fig = px.histogram(datos_2010_2023[ticker].dropna(), x="Retornos", nbins=50, title=f"Distribución de Retornos - {descripcion['nombre']}")
+        st.plotly_chart(fig)
 
 # --- Portafolios Óptimos ---
 with tabs[3]:
