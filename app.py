@@ -170,11 +170,12 @@ def graficar_linea(df, x_column, y_column, title, labels=None):
     :param labels: Diccionario para etiquetar los ejes (opcional).
     :return: gráfico interactivo.
     """
-    # Asegurarse de que y_column sea unidimensional
-    y_data = df[y_column].values.flatten()
+    # Asegurarse de que y_column sea un DataFrame de una sola columna y alineado con el índice de x_column
+    if isinstance(y_column, pd.Series):
+        y_column = y_column.reset_index(drop=True)  # Asegurar que y_column tenga el índice correcto
 
     # Crear el gráfico de línea
-    fig = px.line(df, x=x_column, y=y_data, title=title, labels=labels)
+    fig = px.line(df, x=x_column, y=y_column, title=title, labels=labels)
     return fig
 
 # --- Funciones de Optimización de Portafolios ---
