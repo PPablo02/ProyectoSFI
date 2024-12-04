@@ -543,7 +543,7 @@ with tabs[3]:
     st.plotly_chart(fig_target)
 
     portafolios_optimos = {
-    "Mínima Volatilidad": pesos_min_vol,
+    "Mínima Varianza": pesos_min_vol,
     "Máximo Sharpe Ratio": pesos_sharpe,
     "Mínima Volatilidad (10% Rend.)": pesos_target
     }
