@@ -374,7 +374,7 @@ def graficar_frontera_eficiente(rendimientos, volatilidades, pesos, portafolios_
 
     # Agregar la frontera eficiente
     fig.add_trace(go.Scatter(x=volatilidades, y=rendimientos, mode='markers', 
-                             marker=dict(color='blue', size=4, opacity=0.5), name="Frontera Eficiente"))
+                             marker=dict(color='blue', size=4, opacity=0.5), name="Portafolios Aleatorios"))
 
     # Marcar los portafolios optimizados
     for nombre, portafolio in portafolios_optimos.items():
@@ -494,9 +494,13 @@ with tabs[2]:
     st.plotly_chart(fig_comparativa, use_container_width=True)
 
 
+
+
+
+#===================================================================================================================================================================================
 # --- Portafolios Óptimos ---
 with tabs[3]:
-    st.header("Portafolios Óptimos con la teoría de Markowitz")
+    st.header("Portafolios Óptimos con la Teoría de Markowitz")
 
     # Cargar los retornos de la ventana de tiempo e implementar la optimizacion
     retornos = cargar_datos_y_retornos(tickers, "2010-01-01", "2020-01-01")
@@ -557,12 +561,33 @@ with tabs[3]:
     # Mostrar en Streamlit
     st.plotly_chart(fig_frontera)
     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#===================================================================================================================================================================================
 # --- Backtesting ---
 with tabs[4]:
     st.header("Backtesting")
 
 
-    
+
+
+
+
+
+
+#===================================================================================================================================================================================    
 # --- Modelo de Black-Litterman ---
 with tabs[5]:
     st.header("Modelo de Black-Litterman")
