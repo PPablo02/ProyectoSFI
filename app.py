@@ -393,10 +393,6 @@ def graficar_frontera_eficiente(rendimientos, volatilidades, pesos, portafolios_
     return fig
 
 
-
-
-
-# ============================================================================================================================================================================================
 # --- Configuración de Streamlit ---
 st.title("Proyecto de Optimización de Portafolios")
 
@@ -564,17 +560,6 @@ with tabs[3]:
 
     # Mostrar en Streamlit
     st.plotly_chart(fig_frontera)
-
-
-
-    # Graficar y mostrar la frontera eficiente
-    st.markdown("### Frontera Eficiente")
-    st.write(
-        "La frontera eficiente representa los portafolios que ofrecen el máximo rendimiento "
-        "para un nivel de riesgo dado. Los portafolios óptimos se destacan en la gráfica."
-    )
-    fig_frontera = graficar_frontera_eficiente(rendimientos, volatilidades, pesos, portafolios_optimos)
-    st.plotly_chart(fig_frontera)
     
 
 
@@ -606,8 +591,6 @@ with tabs[4]:
 # --- Modelo de Black-Litterman ---
 with tabs[5]:
     st.header("Modelo de Black-Litterman")
-
-
 
 
 
