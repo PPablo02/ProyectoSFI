@@ -321,6 +321,22 @@ def black_litterman_optimizar(retornos, P, Q, tau=0.05, metodo="min_vol"):
     # Optimización de Markowitz usando la media ajustada
     return optimizar_portafolio_markowitz(retornos, metodo=metodo)
 
+def ajustar_retornos_a_pesos(retornos, tipo_cambio):
+    """
+    Ajusta los retornos de los ETFs de dólares a pesos mexicanos.
+    
+    :param retornos: DataFrame de retornos diarios de los ETFs.
+    :param tipo_cambio: Serie del tipo de cambio USD/MXN diario.
+    :return: DataFrame con retornos ajustados a pesos mexicanos.
+    """
+    # Asegurarse de que las fechas coincidan entre los retornos y el tipo de cambio
+    retornos = retornos.loc[retornos.index.intersection(tipo_cambio.index)]
+    tipo_cambio = tipo_cambio.loc[tipo_cambio.index.intersection(retornos.index)]
+    
+    # Ajustar los retornos multiplicando por el cambio diario del tipo de cambio
+    retornos_mxn = retornos.multiply(tipo_cambio.pct_change().add(1), axis=0) - 1
+    return retornos_mxn
+
 # --- Configuración de Streamlit ---
 st.title("Proyecto de Optimización de Portafolios")
 
