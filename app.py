@@ -462,7 +462,7 @@ with tabs[2]:
         
         # Mostrar métricas en una tabla
         st.markdown("### Métricas Estadísticas")
-        st.table(pd.DataFrame(metrics, index=["Valor"]).T)
+        st.dataframe(pd.DataFrame(metrics, index=["Valor"]).T)
 
         # Graficar precios y drawdown
         fig = graficar_drawdown_financiero(data, titulo=f"Precios y Drawdown de {ticker}")
