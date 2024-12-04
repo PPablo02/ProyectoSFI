@@ -393,6 +393,65 @@ def graficar_frontera_eficiente(rendimientos, volatilidades, pesos, portafolios_
     return fig
 
 
+
+
+
+# Graficar la frontera eficiente
+def graficar_frontera_eficiente(rendimientos, volatilidades, pesos, portafolios_optimos, retornos):
+    fig = go.Figure()
+
+    # Ratio de Sharpe (usando una tasa libre de riesgo fija)
+    risk_free_rate = 0.0
+    ratios_sharpe = (rendimientos - risk_free_rate) / volatilidades
+
+    # Portafolios aleatorios
+    fig.add_trace(
+        go.Scatter(
+            x=volatilidades,
+            y=rendimientos,
+            mode='markers',
+            marker=dict(
+                color=ratios_sharpe,
+                colorscale='Viridis',
+                size=6,
+                colorbar=dict(title='Sharpe Ratio')
+            ),
+            name='Portafolios Aleatorios',
+            hovertemplate='Rendimiento: %{y:.2%}<br>Volatilidad: %{x:.2%}<br>Sharpe: %{marker.color:.2f}'
+        )
+    )
+
+    # Marcar los portafolios optimizados
+    for nombre, pesos_optimos in portafolios_optimos.items():
+        rendimiento_opt, volatilidad_opt = calcular_rendimiento_volatilidad(pesos_optimos, retornos)
+        fig.add_trace(
+            go.Scatter(
+                x=[volatilidad_opt],
+                y=[rendimiento_opt],
+                mode='markers',
+                marker=dict(color='red', size=12, symbol='x'),
+                name=nombre,
+                hovertemplate=f'<b>{nombre}</b><br>Rendimiento: {rendimiento_opt:.2%}<br>Volatilidad: {volatilidad_opt:.2%}'
+            )
+        )
+
+    # Configuración de la gráfica
+    fig.update_layout(
+        title="Frontera Eficiente con Portafolios Óptimos",
+        xaxis_title="Volatilidad (Riesgo)",
+        yaxis_title="Rendimiento Esperado",
+        template="plotly_white",
+        showlegend=True
+    )
+
+    return fig
+
+
+
+
+
+
+# ============================================================================================================================================================================================
 # --- Configuración de Streamlit ---
 st.title("Proyecto de Optimización de Portafolios")
 
@@ -559,6 +618,17 @@ with tabs[3]:
     fig_frontera = graficar_frontera_eficiente(rendimientos, volatilidades, pesos, portafolios_optimos)
 
     # Mostrar en Streamlit
+    st.plotly_chart(fig_frontera)
+
+
+
+    # Graficar y mostrar la frontera eficiente
+    st.markdown("### Frontera Eficiente")
+    st.write(
+        "La frontera eficiente representa los portafolios que ofrecen el máximo rendimiento "
+        "para un nivel de riesgo dado. Los portafolios óptimos se destacan en la gráfica."
+    )
+    fig_frontera = graficar_frontera_eficiente(rendimientos, volatilidades, pesos, portafolios_optimos)
     st.plotly_chart(fig_frontera)
     
 
