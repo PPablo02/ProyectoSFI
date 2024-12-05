@@ -487,12 +487,12 @@ st.table(metricas_df)
 
 
     # Graficar todos los portafolios en una sola gráfica
-    fig_rendimientos = px.line(
-        rendimientos_acumulados,
-        title="Rendimientos Acumulados - Comparación de Portafolios",
-        labels={"value": "Rendimientos Acumulados", "index": "Fecha"}
-    )
-    st.plotly_chart(fig_rendimientos)
+fig_rendimientos = px.line(
+    rendimientos_acumulados,
+    title="Rendimientos Acumulados - Comparación de Portafolios",
+    labels={"value": "Rendimientos Acumulados", "index": "Fecha"}
+)
+st.plotly_chart(fig_rendimientos)
 
 
 # --- Modelo de Black-Litterman ---
