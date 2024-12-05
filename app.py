@@ -433,27 +433,51 @@ with tabs[4]:
     rendimientos_acumulados = pd.DataFrame(index=retornos_2021_2023.index)
 
     
-
-        # Calcular Drawdown y Watermark
-        #drawdown, watermark = calcular_drawdown_y_watermark(precios)
-
     #Métricas por cada portafolio, hay que incluir rendimientos acumulados, sesgo, curtosis, VaR, CVAR, sharp, sortino y drowdown
-    retornos_min_vol = np.sum(retornos_2021_2023 * pesos_min_vol, axis = 1)
+    #Comenzamos con el portafolio de mínima volatilidad
+    #Extraemos los rendimientos
+ # Lista de portafolios y sus respectivos pesos
+    portafolios = [
+        ("Mínima Volatilidad", pesos_min_vol),
+        ("Máximo Sharpe Ratio", pesos_sharpe)
+    ]
 
-    media = retornos_min_vol.mean() * 100
-    volatilidad = retornos_min_vol.std() * 100
-    sesgo = skew(retornos_min_vol)
-    curtosis = kurtosis(retornos_min_vol)
-    sharpe = media / volatilidad if volatilidad != 0 else np.nan
-    sortino = media / retornos_min_vol[retornos_min_vol < 0].std() if retornos_min_vol[retornos_min_vol < 0].std() != 0 else np.nan
-    VaR_95 = np.percentile(retornos_min_vol, 5)
-    CVaR_95 = retornos_min_vol[retornos_min_vol <= VaR_95].mean()
+    # Lista para almacenar las métricas de cada portafolio
+    metricas_totales = []
 
-    metricas = pd.DataFrame({
-        "Métrica": ["Media (%)", "Volatilidad (%)", "Sesgo", "Curtosis", "Sharpe Ratio", "Sortino Ratio", "VaR 95%", "CVaR 95%"],
-        "Valor": [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95],
-    })
-    st.dataframe(metricas)    
+    # Bucle para iterar sobre los portafolios
+    for nombre, pesos in portafolios:
+        # Calculamos los rendimientos para el portafolio actual
+        retornos = np.sum(retornos_2021_2023 * pesos, axis=1)
+
+        # Calculamos las estadísticas relevantes
+        media = retornos.mean() * 100
+        volatilidad = retornos.std() * 100
+        sesgo = skew(retornos)
+        curtosis = kurtosis(retornos)
+        sharpe = media / volatilidad if volatilidad != 0 else np.nan
+        sortino = media / retornos[retornos < 0].std() if retornos[retornos < 0].std() != 0 else np.nan
+        VaR_95 = np.percentile(retornos, 5)
+        CVaR_95 = retornos[retornos <= VaR_95].mean()
+
+        # Guardamos las métricas en un DataFrame
+        metricas = pd.DataFrame({
+            "Métrica": ["Media (%)", "Volatilidad (%)", "Sesgo", "Curtosis", "Sharpe Ratio", "Sortino Ratio", "VaR 95%", "CVaR 95%"],
+            "Valor": [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95],
+            "Portafolio": [nombre] * 8  # Añadimos una columna con el nombre del portafolio
+        })
+
+        # Añadimos las métricas del portafolio actual a la lista de métricas
+        metricas_totales.append(metricas)
+
+    # Combinamos todas las métricas de los portafolios en un solo DataFrame
+    metricas_finales = pd.concat(metricas_totales, ignore_index=True)
+
+    # Mostrar las métricas combinadas
+    st.write(metricas_finales)
+
+
+
 
 
     # Calcular rendimientos acumulados para cada portafolio
