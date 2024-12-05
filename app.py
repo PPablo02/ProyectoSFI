@@ -438,11 +438,11 @@ with tabs[4]:
         #drawdown, watermark = calcular_drawdown_y_watermark(precios)
 
     #Métricas por cada portafolio, hay que incluir rendimientos acumulados, sesgo, curtosis, VaR, CVAR, sharp, sortino y drowdown
+    retornos_min_vol = np.sum(retornos_2021_2023 * pesos_min_vol)
 
-    media_min_vol = np.sum(np.sum(retornos_2021_2023 * pesos_min_vol))
 
 
-    st.write("Contenido de la variable `datos_2021_2023`:", np.sum(skew(retornos_2021_2023 * pesos_min_vol)))
+    st.write("Contenido de la variable `datos_2021_2023`:", retornos_min_vol)
 
 
     # Calcular rendimientos acumulados para cada portafolio
