@@ -469,7 +469,8 @@ with tabs[4]:
         volatilidad = retornos_2021_2023.std() * 100
         sesgo = skew(retornos_2021_2023)
         curtosis = kurtosis(retornos_2021_2023)
-        sharpe = media / volatilidad if volatilidad != 0 else np.nan
+        sharpe = media / volatilidad
+        sharpe = sharpe.where(volatilidad != 0, np.nan)  # Sustituir donde volatilidad es 0
         sortino = media / retornos_2021_2023[retornos_2021_2023 < 0].std() if retornos_2021_2023[retornos_2021_2023 < 0].std() != 0 else np.nan
         VaR_95 = np.percentile(retornos_2021_2023, 5)
         CVaR_95 = retornos_2021_2023[retornos_2021_2023 <= VaR_95].mean()
