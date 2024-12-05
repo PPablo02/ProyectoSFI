@@ -461,21 +461,22 @@ with tabs[4]:
         VaR_95 = np.percentile(retornos, 5)
         CVaR_95 = retornos[retornos <= VaR_95].mean()
 
-        # Guardamos las métricas en una lista para el portafolio actual
-        metricas = [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95]
+        # Guardamos las métricas en un DataFrame
+        metricas = pd.DataFrame({
+            "Métrica": ["Media (%)", "Volatilidad (%)", "Sesgo", "Curtosis", "Sharpe Ratio", "Sortino Ratio", "VaR 95%", "CVaR 95%"],
+            "Valor": [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95],
+            "Portafolio": [nombre] * 8  # Añadimos una columna con el nombre del portafolio
+        })
 
         # Añadimos las métricas del portafolio actual a la lista de métricas
         metricas_totales.append(metricas)
 
-    # Creamos un DataFrame donde las filas son las métricas y las columnas son los portafolios
-    metricas_finales = pd.DataFrame(
-        metricas_totales,
-        columns=[nombre for nombre, portafolio in portafolios],
-        index=["Media (%)", "Volatilidad (%)", "Sesgo", "Curtosis", "Sharpe Ratio", "Sortino Ratio", "VaR 95%", "CVaR 95%"]
-    )
+    # Combinamos todas las métricas de los portafolios en un solo DataFrame
+    metricas_finales = pd.concat(metricas_totales, ignore_index=True)
 
     # Mostrar las métricas combinadas
     st.write(metricas_finales)
+
 
 
 
