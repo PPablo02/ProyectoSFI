@@ -449,7 +449,11 @@ with tabs[4]:
     VaR_95 = np.percentile(retornos_min_vol, 5)
     CVaR_95 = retornos_min_vol[retornos_min_vol <= VaR_95].mean()
 
-    st.write("Contenido de la variable `datos_2021_2023`:", [media,volatilidad,sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95 ])
+    metricas = pd.DataFrame({
+        "Métrica": ["Media (%)", "Volatilidad (%)", "Sesgo", "Curtosis", "Sharpe Ratio", "Sortino Ratio", "VaR 95%", "CVaR 95%"],
+        "Valor": [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95],
+    })
+    st.dataframe(metricas)    
 
 
     # Calcular rendimientos acumulados para cada portafolio
