@@ -468,7 +468,8 @@ with tabs[4]:
 
     metricas_final = metricas_final[:,1:]
     # Mostrar las métricas combinadas
-    st.write(pd.DataFrame(metricas_final, columns=['Mínima volatilidad', 'Máximo sharp ratio', 'Equitativo']))
+    st.write(pd.DataFrame(metricas_final, columns=['Mínima volatilidad', 'Máximo sharp ratio', 'Equitativo'], index = 
+                          ["Media (%)", "Volatilidad (%)", "Sesgo", "Curtosis", "Sharpe Ratio", "Sortino Ratio", "VaR 95%", "CVaR 95%"]))
 
 
     # Combinamos todas las métricas de los portafolios en un solo DataFrame
