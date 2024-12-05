@@ -465,9 +465,9 @@ with tabs[4]:
         metricas_final = np.column_stack((metricas_final, metricas))
 
 
-
+    metricas_final = metricas_final[:,1:]
     # Mostrar las métricas combinadas
-    st.write(pd.DataFrame(metricas_final, columns=['Columna1', 'Columna2', 'columna 3']))
+    st.write(pd.DataFrame(metricas_final, columns=['Columna1', 'Columna2']))
 
 
     # Combinamos todas las métricas de los portafolios en un solo DataFrame
