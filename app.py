@@ -469,7 +469,7 @@ for nombre, pesos in [
     sesgo = skew(rendimientos)
     curtosis = kurtosis(rendimientos)
     sharpe = media / volatilidad.where(volatilidad != 0, np.nan)
-    sortino = media / rendimientos[rendimientos < 0].std() if rendimientos[rendimientos < 0].std() != 0 else np.nan
+    sortino = media / (rendimientos[rendimientos < 0].std() if np.any(rendimientos < 0) else np.nan)
     VaR_95 = np.percentile(rendimientos, 5)
     CVaR_95 = rendimientos[rendimientos <= VaR_95].mean()
 
