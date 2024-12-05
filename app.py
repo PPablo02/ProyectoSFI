@@ -439,7 +439,7 @@ with tabs[4]:
 
     #Métricas por cada portafolio, hay que incluir rendimientos acumulados, sesgo, curtosis, VaR, CVAR, sharp, sortino y drowdown
 
-    media_min_vol = np.sum(retornos_2021_2023 * pesos_min_vol)
+    media_min_vol = np.sum(np.sum(retornos_2021_2023 * pesos_min_vol))
 
 
     st.write("Contenido de la variable `datos_2021_2023`:", media_min_vol)
