@@ -474,7 +474,7 @@ with tabs[4]:
     metricas_finales = pd.concat(metricas_totales, ignore_index=True)
 
     # Mostrar las métricas combinadas
-    st.write(metricas_finales)
+    st.write(metricas)
 
 
 
