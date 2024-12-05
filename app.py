@@ -428,6 +428,8 @@ with tabs[4]:
     datos_2021_2023 = cargar_datos(list(tickers.keys()), "2021-01-01", "2023-01-01")
     retornos_2021_2023 = pd.DataFrame({k: v["Retornos"] for k, v in datos_2021_2023.items()}).dropna()
 
+
+    st.write("Contenido de la variable `datos_2021_2023`:", datos_2021_2023)
     # Crear DataFrame para guardar los rendimientos acumulados de cada portafolio
     rendimientos_acumulados = pd.DataFrame(index=retornos_2021_2023.index)
 
@@ -436,7 +438,10 @@ with tabs[4]:
         # Calcular Drawdown y Watermark
         #drawdown, watermark = calcular_drawdown_y_watermark(precios)
 
- 
+    #Métricas por cada portafolio, hay que incluir rendimientos acumulados, sesgo, curtosis, VaR, CVAR, sharp, sortino y drowdown
+    
+
+
 
     # Calcular rendimientos acumulados para cada portafolio
     st.subheader("Rendimientos Acumulados de los Portafolios")
@@ -452,40 +457,8 @@ with tabs[4]:
 
 
 
-    # Crear una lista para almacenar métricas de ambos grupos
-    metricas_dict = {
-        "Métrica": ["Media (%)", "Volatilidad (%)", "Sesgo", "Curtosis", "Sharpe Ratio", "Sortino Ratio", "VaR 95%", "CVaR 95%"],
-        "Mínima Volatilidad": [],
-        "Máximo Sharpe Ratio": [],
-    }
-
-    # Iterar sobre los grupos y calcular las métricas
-    for nombre, pesos in [
-        ("Mínima Volatilidad", pesos_min_vol),
-        ("Máximo Sharpe Ratio", pesos_sharpe),
-    ]:
-        # Calcular métricas estadísticas
-        media = retornos_2021_2023.mean() * 100
-        volatilidad = retornos_2021_2023.std() * 100
-        sesgo = skew(retornos_2021_2023)
-        curtosis = kurtosis(retornos_2021_2023)
-        sharpe = media / volatilidad
-        sharpe = sharpe.where(volatilidad != 0, np.nan)  # Sustituir donde volatilidad es 0
-        sortino = media / retornos_2021_2023[retornos_2021_2023 < 0].std() if retornos_2021_2023[retornos_2021_2023 < 0].std() != 0 else np.nan
-        VaR_95 = np.percentile(retornos_2021_2023, 5)
-        CVaR_95 = retornos_2021_2023[retornos_2021_2023 <= VaR_95].mean()
-
-        # Añadir métricas calculadas al diccionario
-        metricas_dict[nombre] = [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95]
 
 
-
-    metricas_df = pd.DataFrame(metricas_dict)
-
-
-    # Mostrar la tabla en Streamlit
-    st.write("### Comparación de Métricas")
-    st.table(metricas_df)
 
 
 
