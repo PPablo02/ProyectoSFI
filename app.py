@@ -487,8 +487,7 @@ with tabs[4]:
     # Combinamos todas las métricas de los portafolios en un solo DataFrame
     #metricas_finales = pd.concat(metricas_totales, ignore_index=True)
 
-    # Mostrar las métricas combinadas
-    st.write(df_unido)
+
 
 
 
