@@ -474,13 +474,13 @@ with tabs[4]:
         VaR_95 = np.percentile(retornos, 5)
         CVaR_95 = retornos[retornos <= VaR_95].mean()
 
-  
+        # Añadir métricas calculadas al diccionario
+        metricas_dict[nombre] = [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95]
 
-    # Crear DataFrame de métricas con nombres
-    metricas_df = {
-        'Métrica': ['Media', 'Volatilidad', 'Sesgo', 'Curtosis', 'Sharpe Ratio', 'Sortino Ratio', 'VaR 95%', 'CVaR 95%'],
-        'Valor': [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95],
-    }
+
+
+    metricas_df = pd.DataFrame(metricas_dict)
+
 
     # Mostrar la tabla en Streamlit
     st.write("### Comparación de Métricas")
