@@ -465,25 +465,19 @@ with tabs[4]:
         ("Máximo Sharpe Ratio", pesos_sharpe),
     ]:
         # Calcular métricas estadísticas
-        rendimientos = retornos_2021_2023.dot(pesos.reshape(-1, 1))        
-        media = rendimientos.mean() * 100
-        volatilidad = rendimientos.std() * 100
-        sesgo = skew(rendimientos)
-        curtosis = kurtosis(rendimientos)
-        sharpe = media / volatilidad.where(volatilidad != 0, np.nan)
-        sortino = media / (rendimientos[rendimientos < 0].std() if np.any(rendimientos < 0) else np.nan)
-        VaR_95 = np.percentile(rendimientos, 5)
-        CVaR_95 = rendimientos[rendimientos <= VaR_95].mean()
+        media = retornos.mean() * 100
+        volatilidad = retornos.std() * 100
+        sesgo = skew(retornos)
+        curtosis = kurtosis(retornos)
+        sharpe = media / volatilidad if volatilidad != 0 else np.nan
+        sortino = media / retornos[retornos < 0].std() if retornos[retornos < 0].std() != 0 else np.nan
+        VaR_95 = np.percentile(retornos, 5)
+        CVaR_95 = retornos[retornos <= VaR_95].mean()
 
-        # Agregar métricas al diccionario
-        metricas_dict[nombre].extend([pd.Series([media]).item(), pd.Series([volatilidad]).item(), pd.Series([sesgo]).item(), pd.Series([curtosis]).item(), pd.Series([sharpe]).item(), pd.Series([sortino]).item(), pd.Series([VaR_95]).item(), pd.Series([CVaR_95]).item()])
-        # Si el valor es una Series con un solo valor
-
-
-
+  
 
     # Crear el DataFrame final
-    metricas_df = pd.DataFrame(metricas_dict)
+    metricas_df = pd.concat([media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95], axis=0, ignore_index=True)
 
     # Mostrar la tabla en Streamlit
     st.write("### Comparación de Métricas")
