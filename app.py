@@ -429,7 +429,7 @@ with tabs[4]:
     retornos_2021_2023 = pd.DataFrame({k: v["Retornos"] for k, v in datos_2021_2023.items()}).dropna()
 
 
-    st.write("Contenido de la variable `datos_2021_2023`:", datos_2021_2023)
+    st.write("Contenido de la variable `datos_2021_2023`:", retornos_2021_2023)
     # Crear DataFrame para guardar los rendimientos acumulados de cada portafolio
     rendimientos_acumulados = pd.DataFrame(index=retornos_2021_2023.index)
 
