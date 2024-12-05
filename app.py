@@ -418,6 +418,8 @@ with tabs[3]:
     fig_sharpe = px.bar(x=list(tickers.keys()), y=pesos_sharpe, title="Pesos - Máximo Sharpe Ratio")
     st.plotly_chart(fig_sharpe)
 
+
+
 # --- Backtesting ---
 with tabs[4]:
     st.header("Backtesting (2021-2023)")
@@ -450,53 +452,53 @@ with tabs[4]:
 
 
 
-# Crear una lista para almacenar métricas de ambos grupos
-metricas_dict = {
-    "Métrica": ["Media (%)", "Volatilidad (%)", "Sesgo", "Curtosis", "Sharpe Ratio", "Sortino Ratio", "VaR 95%", "CVaR 95%"],
-    "Mínima Volatilidad": [],
-    "Máximo Sharpe Ratio": [],
-}
+    # Crear una lista para almacenar métricas de ambos grupos
+    metricas_dict = {
+        "Métrica": ["Media (%)", "Volatilidad (%)", "Sesgo", "Curtosis", "Sharpe Ratio", "Sortino Ratio", "VaR 95%", "CVaR 95%"],
+        "Mínima Volatilidad": [],
+        "Máximo Sharpe Ratio": [],
+    }
 
-# Iterar sobre los grupos y calcular las métricas
-for nombre, pesos in [
-    ("Mínima Volatilidad", pesos_min_vol),
-    ("Máximo Sharpe Ratio", pesos_sharpe),
-]:
-    # Calcular métricas estadísticas
-    rendimientos = retornos_2021_2023.dot(pesos.reshape(-1, 1))        
-    media = rendimientos.mean() * 100
-    volatilidad = rendimientos.std() * 100
-    sesgo = skew(rendimientos)
-    curtosis = kurtosis(rendimientos)
-    sharpe = media / volatilidad.where(volatilidad != 0, np.nan)
-    sortino = media / (rendimientos[rendimientos < 0].std() if np.any(rendimientos < 0) else np.nan)
-    VaR_95 = np.percentile(rendimientos, 5)
-    CVaR_95 = rendimientos[rendimientos <= VaR_95].mean()
+    # Iterar sobre los grupos y calcular las métricas
+    for nombre, pesos in [
+        ("Mínima Volatilidad", pesos_min_vol),
+        ("Máximo Sharpe Ratio", pesos_sharpe),
+    ]:
+        # Calcular métricas estadísticas
+        rendimientos = retornos_2021_2023.dot(pesos.reshape(-1, 1))        
+        media = rendimientos.mean() * 100
+        volatilidad = rendimientos.std() * 100
+        sesgo = skew(rendimientos)
+        curtosis = kurtosis(rendimientos)
+        sharpe = media / volatilidad.where(volatilidad != 0, np.nan)
+        sortino = media / (rendimientos[rendimientos < 0].std() if np.any(rendimientos < 0) else np.nan)
+        VaR_95 = np.percentile(rendimientos, 5)
+        CVaR_95 = rendimientos[rendimientos <= VaR_95].mean()
 
-    # Agregar métricas al diccionario
-    metricas_dict[nombre].extend([pd.Series([media]).item(), pd.Series([volatilidad]).item(), pd.Series([sesgo]).item(), pd.Series([curtosis]).item(), pd.Series([sharpe]).item(), pd.Series([sortino]).item(), pd.Series([VaR_95]).item(), pd.Series([CVaR_95]).item()])
-    # Si el valor es una Series con un solo valor
-
-
-
-
-# Crear el DataFrame final
-metricas_df = pd.DataFrame(metricas_dict)
-
-# Mostrar la tabla en Streamlit
-st.write("### Comparación de Métricas")
-st.table(metricas_df)
+        # Agregar métricas al diccionario
+        metricas_dict[nombre].extend([pd.Series([media]).item(), pd.Series([volatilidad]).item(), pd.Series([sesgo]).item(), pd.Series([curtosis]).item(), pd.Series([sharpe]).item(), pd.Series([sortino]).item(), pd.Series([VaR_95]).item(), pd.Series([CVaR_95]).item()])
+        # Si el valor es una Series con un solo valor
 
 
 
 
-    # Graficar todos los portafolios en una sola gráfica
-fig_rendimientos = px.line(
-    rendimientos_acumulados,
-    title="Rendimientos Acumulados - Comparación de Portafolios",
-    labels={"value": "Rendimientos Acumulados", "index": "Fecha"}
-)
-st.plotly_chart(fig_rendimientos)
+    # Crear el DataFrame final
+    metricas_df = pd.DataFrame(metricas_dict)
+
+    # Mostrar la tabla en Streamlit
+    st.write("### Comparación de Métricas")
+    st.table(metricas_df)
+
+
+
+
+        # Graficar todos los portafolios en una sola gráfica
+    fig_rendimientos = px.line(
+        rendimientos_acumulados,
+        title="Rendimientos Acumulados - Comparación de Portafolios",
+        labels={"value": "Rendimientos Acumulados", "index": "Fecha"}
+    )
+    st.plotly_chart(fig_rendimientos)
 
 
 # --- Modelo de Black-Litterman ---
