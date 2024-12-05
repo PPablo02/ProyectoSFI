@@ -462,7 +462,7 @@ with tabs[4]:
 
         # Guardamos las métricas en un DataFrame
         metricas = [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95]
-        metricas_final = pd.concat([0,0,0,0,0,0,0,0], metricas, axis=1)
+        metricas_final = list(zip([0,0,0,0,0,0,0,0], metricas))
 
 
     # Mostrar las métricas combinadas
