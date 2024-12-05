@@ -465,14 +465,14 @@ with tabs[4]:
         ("Máximo Sharpe Ratio", pesos_sharpe),
     ]:
         # Calcular métricas estadísticas
-        media = retornos.mean() * 100
-        volatilidad = retornos.std() * 100
-        sesgo = skew(retornos)
-        curtosis = kurtosis(retornos)
+        media = retornos_2021_2023.mean() * 100
+        volatilidad = retornos_2021_2023.std() * 100
+        sesgo = skew(retornos_2021_2023)
+        curtosis = kurtosis(retornos_2021_2023)
         sharpe = media / volatilidad if volatilidad != 0 else np.nan
-        sortino = media / retornos[retornos < 0].std() if retornos[retornos < 0].std() != 0 else np.nan
-        VaR_95 = np.percentile(retornos, 5)
-        CVaR_95 = retornos[retornos <= VaR_95].mean()
+        sortino = media / retornos_2021_2023[retornos_2021_2023 < 0].std() if retornos_2021_2023[retornos_2021_2023 < 0].std() != 0 else np.nan
+        VaR_95 = np.percentile(retornos_2021_2023, 5)
+        CVaR_95 = retornos_2021_2023[retornos_2021_2023 <= VaR_95].mean()
 
         # Añadir métricas calculadas al diccionario
         metricas_dict[nombre] = [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95]
