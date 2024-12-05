@@ -464,8 +464,7 @@ with tabs[4]:
         # Guardamos las métricas en un DataFrame
         metricas = pd.DataFrame({
             "Métrica": ["Media (%)", "Volatilidad (%)", "Sesgo", "Curtosis", "Sharpe Ratio", "Sortino Ratio", "VaR 95%", "CVaR 95%"],
-            "Valor": [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95],
-            "Portafolio": [nombre] * 8  # Añadimos una columna con el nombre del portafolio
+            "Valor": [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95]
         })
 
         # Añadimos las métricas del portafolio actual a la lista de métricas
