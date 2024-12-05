@@ -470,7 +470,7 @@ with tabs[4]:
     # Creamos un DataFrame donde las filas son las métricas y las columnas son los portafolios
     metricas_finales = pd.DataFrame(
         metricas_totales,
-        columns=[nombre for nombre, _ in portafolios],
+        columns=[nombre for nombre, portafolio in portafolios],
         index=["Media (%)", "Volatilidad (%)", "Sesgo", "Curtosis", "Sharpe Ratio", "Sortino Ratio", "VaR 95%", "CVaR 95%"]
     )
 
