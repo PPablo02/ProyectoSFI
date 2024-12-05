@@ -474,7 +474,11 @@ for nombre, pesos in [
     CVaR_95 = rendimientos[rendimientos <= VaR_95].mean()
 
     # Agregar métricas al diccionario
-    metricas_dict[nombre].extend([media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95])
+    metricas_dict[nombre].extend([pd.Series([media]).item(), pd.Series([volatilidad]).item(), pd.Series([sesgo]).item(), pd.Series([curtosis]).item(), pd.Series([sharpe]).item(), pd.Series([sortino]).item(), pd.Series([VaR_95]).item(), pd.Series([CVaR_95]).item()])
+    # Si el valor es una Series con un solo valor
+
+
+print(valor_escalar)
 
 # Crear el DataFrame final
 metricas_df = pd.DataFrame(metricas_dict)
