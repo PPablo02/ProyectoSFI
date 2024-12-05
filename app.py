@@ -478,7 +478,7 @@ for nombre, pesos in [
     # Si el valor es una Series con un solo valor
 
 
-print(valor_escalar)
+
 
 # Crear el DataFrame final
 metricas_df = pd.DataFrame(metricas_dict)
