@@ -442,7 +442,7 @@ with tabs[4]:
     media_min_vol = np.sum(np.sum(retornos_2021_2023 * pesos_min_vol))
 
 
-    st.write("Contenido de la variable `datos_2021_2023`:", media_min_vol)
+    st.write("Contenido de la variable `datos_2021_2023`:", skew(retornos_2021_2023 * pesos_min_vol))
 
 
     # Calcular rendimientos acumulados para cada portafolio
