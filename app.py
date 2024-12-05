@@ -462,7 +462,8 @@ with tabs[4]:
 
         # Guardamos las métricas en un DataFrame
         metricas = [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95]
-        metricas_final = list(zip(metricas_final, metricas))
+        metricas_final = np.column_stack((metricas_final, metricas))
+
 
 
     # Mostrar las métricas combinadas
