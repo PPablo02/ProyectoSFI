@@ -1,17 +1,11 @@
-
 import streamlit as st
 import yfinance as yf
 import plotly.express as px
 import pandas as pd
 import numpy as np
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-from datetime import datetime, timedelta
-from datetime import date
+from datetime import datetime
 from scipy.optimize import minimize
 from scipy.stats import skew, kurtosis
-from plotly.subplots import make_subplots
-
 
 # --- Configuración de los ETFs ---
 tickers = {
@@ -103,295 +97,152 @@ tickers = {
     }
 }
 
-# Función para cargar datos de múltiples tickers
+# --- Funciones Auxiliares ---
 def cargar_datos(tickers, inicio, fin):
-    """
-    Descarga datos históricos y calcula retornos diarios.
-    """
+    """Descarga datos históricos para una lista de tickers desde Yahoo Finance."""
     datos = {}
     for ticker in tickers:
-        try:
-            # Descargar datos
-            df = yf.download(ticker, start=inicio, end=fin)
-            # Procesar precios ajustados y calcular retornos
-            df["Precio"] = df["Close"]
-            df["Retornos"] = df["Close"].pct_change()
-            datos[ticker] = df.dropna()
-        except Exception as e:
-            print(f"Error descargando datos para {ticker}: {e}")
+        df = yf.download(ticker, start=inicio, end=fin)
+        df['Retornos'] = df['Close'].pct_change()
+        datos[ticker] = df
     return datos
 
-# Función para calcular beta
-def calcular_beta(portfolio_returns, index_returns):
-    cov_matrix = np.cov(portfolio_returns, index_returns)
-    return cov_matrix[0, 1] / cov_matrix[1, 1]  # Covarianza / Varianza índice
-
-
-# Función para calcular el ratio de Sharpe
-
-def calcular_sharpe_ratio(returns, risk_free_rate=0.02):
-    excess_returns = returns - risk_free_rate / 252  # Asumiendo retornos diarios
-    return np.sqrt(252) * excess_returns.mean() / excess_returns.std()
-
-
-# Función para calcular el ratio de Sortino
-
-def calcular_sortino_ratio(returns, risk_free_rate=0.02, target_return=0):
-    excess_returns = returns - risk_free_rate / 252
-    downside_returns = excess_returns[excess_returns < target_return]
-    downside_deviation = np.sqrt(np.mean(downside_returns**2))
-    return np.sqrt(252) * excess_returns.mean() / downside_deviation
-
-
-# Función para calcular métricas estadísticas
-def calcular_metricas(df, nivel_VaR=[0.95, 0.975, 0.99], risk_free_rate=0.02, target_return=0):
-    """
-    Calcula métricas estadísticas clave, incluyendo VaR, CVaR, Sharpe Ratio, Sortino, y otros.
-
-    :param df: DataFrame con precios y retornos.
-    :param nivel_VaR: Lista de niveles de confianza para VaR.
-    :param risk_free_rate: Tasa libre de riesgo.
-    :param target_return: Retorno objetivo.
-    :return: Diccionario con métricas y serie de drawdown.
-    """
+def calcular_metricas(df, nivel_VaR=[0.95, 0.975, 0.99]):
+    """Calcula métricas estadísticas clave, incluyendo VaR y beta."""
     retornos = df['Retornos'].dropna()
 
     # Calcular métricas básicas
-    media = np.mean(retornos) 
-    volatilidad = np.std(retornos) 
+    media = np.mean(retornos) * 100
+    volatilidad = np.std(retornos) * 100
     sesgo = skew(retornos)
     curtosis = kurtosis(retornos)
 
     # VaR y CVaR
-    VaR = {f"VaR {nivel*100}%": (np.percentile(retornos, (1 - nivel) * 100))*100 for nivel in nivel_VaR}
-    cVaR = {f"CVaR {nivel*100}%": (retornos[retornos <= np.percentile(retornos, (1 - nivel) * 100)].mean())*100 for nivel in nivel_VaR}
+    VaR = {f"VaR {nivel*100}%": np.percentile(retornos, (1 - nivel) * 100) for nivel in nivel_VaR}
+    cVaR = {f"CVaR {nivel*100}%": retornos[retornos <= np.percentile(retornos, (1 - nivel) * 100)].mean() for nivel in nivel_VaR}
 
-    # Ratios financieros
-    sharpe = calcular_sharpe_ratio(retornos, risk_free_rate)
-    sortino = calcular_sortino_ratio(retornos, risk_free_rate, target_return)
+    # Sharpe Ratio
+    sharpe = np.mean(retornos) / np.std(retornos) if np.std(retornos) != 0 else np.nan
 
-    # Crear diccionario con las métricas
-    metrics = {
-        "Media (%)": media*100,
-        "Volatilidad": volatilidad,
-        "Sesgo": sesgo,
-        "Curtosis": curtosis,
-        **VaR,
-        **cVaR,
-        "Sharpe Ratio": sharpe,
-        "Sortino Ratio": sortino
-    }
+    # Beta
+    sp500 = yf.download("^GSPC", start=df.index[0], end=df.index[-1])['Adj Close']
+    sp500_retornos = sp500.pct_change().dropna()
+    retornos_alineados = retornos.reindex(sp500_retornos.index).dropna()
+    sp500_retornos_alineados = sp500_retornos.reindex(retornos_alineados.index).dropna()
 
-    return metrics
-
-
-# Función para calcular drawdown
-def calcular_drawdown(precios):
-    high_water_mark = precios.expanding().max()
-    drawdown = (precios - high_water_mark) / high_water_mark
-    return drawdown, high_water_mark
-
-# Función para graficar precios y drawdown
-def graficar_drawdown_financiero(df, titulo="Análisis de Drawdown"):
-    # Verificar que la columna 'Precios' esté presente
-    if 'Precios' not in df.columns:
-        df['Precios'] = df['Close']  # Usar 'Close' si 'Precios' no está
-
-    # Calcular drawdown y high water mark
-    drawdown, hwm = calcular_drawdown(df['Precios'])
-
-    # Crear gráfico con dos subgráficas
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.05, row_heights=[0.7, 0.3])
-
-    # Graficar precios
-    fig.add_trace(go.Scatter(x=df.index, y=df['Precios'].values, name='Precio', line=dict(color='blue')), row=1, col=1)
-    # Graficar high water mark
-    fig.add_trace(go.Scatter(x=hwm.index, y=hwm.values, name='High Water Mark', line=dict(color='green', dash='dash')), row=1, col=1)
-    # Graficar drawdown
-    fig.add_trace(go.Scatter(x=drawdown.index, y=drawdown.values, name='Drawdown', line=dict(color='red'), fill='tozeroy', fillcolor='rgba(255,0,0,0.1)'), row=2, col=1)
-
-    # Actualizar layout y ejes
-    fig.update_layout(
-        title=titulo,
-        height=800,
-        showlegend=True,
-        hovermode='x unified',
-        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
-    )
-    fig.update_yaxes(title="Precio", row=1, col=1)
-    fig.update_yaxes(title="Drawdown %", tickformat=".1%", range=[-1, 0.1], row=2, col=1)
-    fig.update_xaxes(title="Fecha", row=2, col=1)
-
-    return fig
-
-# Función para graficar la distribución de rendimientos
-def graficar_distribucion_rendimientos(rendimientos, titulo="Distribución de Rendimientos"):
-    fig = go.Figure()
-    fig.add_trace(go.Histogram(x=rendimientos, nbinsx=50, name="Rendimientos", marker=dict(color='blue', opacity=0.7)))
-    fig.update_layout(
-        title=titulo,
-        xaxis_title="Rendimiento Diario",
-        yaxis_title="Frecuencia",
-        bargap=0.2,
-        height=500
-    )
-    return fig
-
-# Función para graficar rendimientos acumulados
-def graficar_rendimientos_acumulados(df, titulo="Rendimientos Acumulados"):
-    df['Rendimiento Acumulado'] = (1 + df['Retornos']).cumprod() - 1
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=df.index, y=df['Rendimiento Acumulado'], name="Rendimiento Acumulado", line=dict(color='blue')))
-    fig.update_layout(
-        title=titulo,
-        xaxis_title="Fecha",
-        yaxis_title="Rendimiento Acumulado",
-        height=500
-    )
-    return fig
-
-# --- Función de Optimización de Portafolios ---
-def optimizar_portafolio_markowitz(retornos, metodo, objetivo=None, rf=0.03):
-    """
-    Optimiza un portafolio según el modelo de Markowitz.
+    # Alinear ambas series utilizando el índice compartido
+    indice_comun = retornos_alineados.index.intersection(sp500_retornos_alineados.index)
+    retornos_alineados = retornos_alineados.loc[indice_comun]
+    sp500_retornos_alineados = sp500_retornos_alineados.loc[indice_comun]
     
-    :param retornos: DataFrame de retornos diarios de los activos.
-    :param metodo: Estrategia de optimización: "min_vol", "sharpe" o "target".
-    :param objetivo: Rendimiento objetivo para el portafolio (usado solo en "target").
-    :param rf: Tasa libre de riesgo anual para calcular el Sharpe ratio.
-    :return: Pesos óptimos de los activos en el portafolio.
-    """
-    # Calcular estadísticos básicos
-    media = retornos.mean()  # Media diaria de los retornos
-    cov = retornos.cov()     # Matriz de covarianza de los retornos
-    n = len(media)           # Número de activos
+    # Convertir a arreglos bidimensionales explícitamente
+    retornos_alineados = retornos_alineados.values.flatten()
+    sp500_retornos_alineados = sp500_retornos_alineados.values.flatten()
     
+    if len(retornos_alineados) > 0 and len(sp500_retornos_alineados) > 0:
+        covarianza = np.cov(retornos_alineados, sp500_retornos_alineados)[0, 1]
+        var_sp500 = np.var(sp500_retornos_alineados)
+        beta = covarianza / var_sp500 if var_sp500 != 0 else np.nan
+    else:
+        beta = np.nan
+        metrics = {
+            "Media (%)": media,
+            "Volatilidad (%)": volatilidad,
+            "Sesgo": sesgo,
+            "Curtosis": curtosis,
+            **VaR,
+            **cVaR,
+            "Sharpe Ratio": sharpe,
+            "Beta": beta
+        }
+    
+        return pd.DataFrame(metrics, index=["Valor"]).T
+
+# Función para graficar con formato adecuado
+def graficar_linea(df, x_column, y_column, title, labels=None):
+    """
+    Función para crear un gráfico de línea asegurando que los datos de `y_column` sean unidimensionales.
+
+    :param df: DataFrame con los datos.
+    :param x_column: Nombre de la columna a usar en el eje X.
+    :param y_column: Nombre de la columna a usar en el eje Y.
+    :param title: Título del gráfico.
+    :param labels: Diccionario para etiquetar los ejes (opcional).
+    :return: gráfico interactivo.
+    """
+    # Asegurarse de que y_column sea un DataFrame de una sola columna y alineado con el índice de x_column
+    if isinstance(y_column, pd.Series):
+        y_column = y_column.reset_index(drop=True)  # Asegurar que y_column tenga el índice correcto
+
+    # Crear el gráfico de línea
+    fig = px.line(df, x=x_column, y=y_column, title=title, labels=labels)
+    return fig
+
+# --- Funciones de Optimización de Portafolios ---
+def optimizar_portafolio_markowitz(retornos, metodo="min_vol", objetivo=None):
+    # Función para optimizar el portafolio según el modelo de Markowitz
+    media = retornos.mean()
+    cov = retornos.cov()
+
     # Función para calcular el riesgo del portafolio (volatilidad)
     def riesgo(w):
         return np.sqrt(np.dot(w.T, np.dot(cov, w)))
 
     # Función para calcular el Sharpe ratio del portafolio
     def sharpe(w):
-        rendimiento_portafolio = np.dot(w.T, media)
-        riesgo_portafolio = riesgo(w)
-        return -(rendimiento_portafolio - rf / 252) / riesgo_portafolio  # Negativo porque minimizamos
+        return -(np.dot(w.T, media) / np.sqrt(np.dot(w.T, np.dot(cov, w))))
 
-    # Pesos iniciales (distribución equitativa)
+    # Número de activos
+    n = len(media)
+    
+    # Pesos iniciales (distribución igual)
     w_inicial = np.ones(n) / n
-
+    
     # Restricciones: los pesos deben sumar 1
     restricciones = [{"type": "eq", "fun": lambda w: np.sum(w) - 1}]
     
-    # Elegir función objetivo según el método
     if metodo == "target" and objetivo is not None:
-        # Agregar restricción para el rendimiento objetivo
-        restricciones.append({"type": "eq", "fun": lambda w: np.dot(w, media) - objetivo})
+        restricciones.append({"type": "eq", "fun": lambda w: np.dot(w, media) - objetivo})  # Rendimiento objetivo
         objetivo_funcion = riesgo
     elif metodo == "sharpe":
         objetivo_funcion = sharpe
     else:
         objetivo_funcion = riesgo
     
-    # Límites de los pesos (entre 0 y 1, o ajustables si se desea apalancamiento)
-    limites = [(-1, 1) for _ in range(n)]
+    # Definir los límites de los pesos (entre 0 y 1)
+    limites = [(0, 1) for _ in range(n)]
     
     # Optimización
     resultado = minimize(objetivo_funcion, w_inicial, constraints=restricciones, bounds=limites)
     
-    # Verificar si la optimización fue exitosa
-    if not resultado.success:
-        raise ValueError(f"Optimización fallida: {resultado.message}")
-    
-    # Devolver los pesos óptimos
-    return np.array(resultado.x)
+    # Devolver los pesos optimizados
+    return np.array(resultado.x).flatten()
 
-
-def cargar_datos_y_retornos(tickers, inicio, fin):
+def black_litterman_optimizar(retornos, P, Q, tau=0.05, metodo="min_vol"):
     """
-    Descarga datos históricos, calcula retornos diarios y devuelve un DataFrame consolidado.
+    Optimiza el portafolio utilizando el modelo de Black-Litterman.
     
-    :param tickers: Lista de tickers.
-    :param inicio: Fecha de inicio (formato "YYYY-MM-DD").
-    :param fin: Fecha de fin (formato "YYYY-MM-DD").
-    :return: DataFrame con retornos diarios por ticker.
+    Parameters:
+    - retornos: DataFrame con los retornos de cada activo.
+    - P: Matriz de views (tamaño k x n).
+    - Q: Vector con las expectativas de rendimiento (tamaño k x 1).
+    - tau: Parámetro de incertidumbre sobre la media de los activos.
+    
+    Returns:
+    - Pesos del portafolio ajustados por el modelo Black-Litterman.
     """
-    datos = {}
-    for ticker in tickers:
-        try:
-            # Descargar datos
-            df = yf.download(ticker, start=inicio, end=fin)
-            # Procesar precios ajustados y calcular retornos
-            df["Retornos"] = df["Close"].pct_change()
-            datos[ticker] = df["Retornos"]
-        except Exception as e:
-            print(f"Error descargando datos para {ticker}: {e}")
+    media = retornos.mean()
+    cov = retornos.cov()
+    n = len(media)
     
-    # Combinar todos los retornos en un DataFrame
-    df_retornos = pd.DataFrame(datos).dropna()
-    return df_retornos
-
-# Función para calcular rendimiento y volatilidad
-def calcular_rendimiento_volatilidad(pesos, retornos):
-        rendimiento = np.dot(pesos, retornos.mean())  # Rendimiento promedio ponderado
-        volatilidad = np.sqrt(np.dot(pesos.T, np.dot(retornos.cov(), pesos)))  # Volatilidad (riesgo)
-        return rendimiento, volatilidad
-
-# Calcular el rendimiento y volatilidad para una serie de portafolios aleatorios
-def frontera_eficiente(retornos, num_portafolios=1000):
-    # Número de activos
-    n = len(retornos.columns)
+    # Matriz de incertidumbre sobre las views
+    M = np.linalg.inv(np.linalg.inv(tau * cov) + np.dot(np.dot(P.T, np.linalg.inv(np.diag([1]*P.shape[0]))), P))
     
-    # Almacenar los rendimientos, volatilidades y pesos de los portafolios
-    rendimientos = []
-    volatilidades = []
-    pesos = []
+    # Ajustar la media con el modelo Black-Litterman
+    ajustada_media = np.dot(M, np.dot(np.linalg.inv(tau * cov), media) + np.dot(np.dot(P.T, np.linalg.inv(np.diag([1]*P.shape[0]))), Q))
     
-    # Generamos 'num_portafolios' portafolios aleatorios
-    for _ in range(num_portafolios):
-        # Pesos aleatorios
-        w = np.random.random(n)
-        w /= np.sum(w)  # Asegurarse que los pesos sumen 1
-        
-        # Rendimiento esperado del portafolio
-        rendimiento = np.dot(w, retornos.mean())
-        
-        # Volatilidad del portafolio
-        volatilidad = np.sqrt(np.dot(w.T, np.dot(retornos.cov(), w)))
-        
-        # Almacenar los resultados
-        rendimientos.append(rendimiento)
-        volatilidades.append(volatilidad)
-        pesos.append(w)
-    
-    # Convertir a arrays para facilitar el uso
-    rendimientos = np.array(rendimientos)
-    volatilidades = np.array(volatilidades)
-    return rendimientos, volatilidades, pesos
-
-# Función para graficar la frontera eficiente
-def graficar_frontera_eficiente(rendimientos, volatilidades, pesos, portafolios_optimos):
-    fig = go.Figure()
-
-    # Agregar la frontera eficiente
-    fig.add_trace(go.Scatter(x=volatilidades, y=rendimientos, mode='markers', 
-                             marker=dict(color='blue', size=4, opacity=0.5), name="Portafolios Aleatorios"))
-
-    # Marcar los portafolios optimizados
-    for nombre, portafolio in portafolios_optimos.items():
-        rendimiento, volatilidad = calcular_rendimiento_volatilidad(portafolio, retornos)
-        fig.add_trace(go.Scatter(x=[volatilidad], y=[rendimiento]*100, mode='markers', 
-                                 marker=dict(color='red', size=12, symbol='x'), name=nombre))
-    
-    # Configuración de la gráfica
-    fig.update_layout(
-        title="Frontera Eficiente con Portafolios Óptimos",
-        xaxis_title="Volatilidad (Riesgo)",
-        yaxis_title="Rendimiento Esperado",
-        showlegend=True
-    )
-    
-    return fig
-
+    # Optimización de Markowitz usando la media ajustada
+    return optimizar_portafolio_markowitz(retornos, metodo=metodo)
 
 # --- Configuración de Streamlit ---
 st.title("Proyecto de Optimización de Portafolios")
@@ -409,7 +260,7 @@ with tabs[0]:
 # --- Selección de ETF's ---
 with tabs[1]:
     st.header("Selección de ETF's")
-    hoy = "2024-12-2"
+    hoy = datetime.today().strftime("%Y-%m-%d")
     datos_2010_hoy = cargar_datos(list(tickers.keys()), "2010-01-01", hoy)
 
     # Crear un DataFrame consolidado con las características de los ETFs
@@ -439,164 +290,225 @@ with tabs[1]:
                       y=datos_2010_hoy[ticker]['Close'].values.flatten(),
                       title=f"Precio de Cierre - {ticker}")
         st.plotly_chart(fig)
-    
+
 # --- Estadísticas de los ETF's ---
 with tabs[2]:
-    st.header("Estadísticas de los ETF's")
-    # Configuración de fechas
-    inicio = "2010-01-01"
-    fin = "2023-01-01"
+    st.header("Estadísticas de los ETF's (2010-2023)")
 
-    # Descargar datos
-    datos_etfs = cargar_datos(tickers, inicio, fin)
+    # Cargar los datos históricos de 2010 a 2023
+    datos_2010_2023 = cargar_datos(list(tickers.keys()), "2010-01-01", "2023-01-01")
 
-    # Inicializar diccionario para almacenar los rendimientos acumulados
-    rendimientos_acumulados = {}
+    # Función auxiliar para calcular Drawdown y Watermark
+    def calcular_drawdown_y_watermark(precios):
+        """Calcula el drawdown y el watermark basado en precios."""
+        watermark = precios.cummax()  # Máximo acumulado
+        drawdown = (precios / watermark) - 1  # Pérdida relativa desde el máximo
+        return drawdown, watermark
 
-    # Ciclo para procesar cada ETF
-    for ticker, data in datos_etfs.items():
-        st.subheader(f"Análisis del ETF: {ticker}")
-        
-        # Calcular métricas
-        metrics = calcular_metricas(data)
-        
-        # Mostrar métricas en una tabla
-        st.markdown("### Métricas Estadísticas")
-        st.dataframe(pd.DataFrame(metrics, index=["Valor"]).T)
+    # Loop para procesar cada ETF
+    for ticker, descripcion in tickers.items():
+        st.subheader(f"{descripcion['nombre']} ({ticker})")
 
-        # Graficar precios y drawdown
-        fig = graficar_drawdown_financiero(data, titulo=f"Precios y Drawdown de {ticker}")
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Graficar distribución de rendimientos
-        fig_dist = graficar_distribucion_rendimientos(data['Retornos'], titulo=f"Distribución de Rendimientos de {ticker}")
-        st.plotly_chart(fig_dist, use_container_width=True)
+        # Datos de rendimientos diarios
+        data = datos_2010_2023[ticker].dropna()
+        precios = data["Close"]  # Precios del ETF
+        retornos = data["Retornos"]
+
+        # Calcular métricas estadísticas
+        media = retornos.mean() * 100
+        volatilidad = retornos.std() * 100
+        sesgo = skew(retornos)
+        curtosis = kurtosis(retornos)
+        sharpe = media / volatilidad if volatilidad != 0 else np.nan
+        sortino = media / retornos[retornos < 0].std() if retornos[retornos < 0].std() != 0 else np.nan
+        VaR_95 = np.percentile(retornos, 5)
+        CVaR_95 = retornos[retornos <= VaR_95].mean()
+
+        # Calcular Drawdown y Watermark
+        drawdown, watermark = calcular_drawdown_y_watermark(precios)
+
+        # 1. Mostrar métricas en tabla
+        st.write("### Tabla de Métricas")
+        metricas = pd.DataFrame({
+            "Métrica": ["Media (%)", "Volatilidad (%)", "Sesgo", "Curtosis", "Sharpe Ratio", "Sortino Ratio", "VaR 95%", "CVaR 95%"],
+            "Valor": [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95],
+        })
+        st.dataframe(metricas)
+
+        # 2. Gráfica de rendimientos acumulados
+        st.write("### Rendimientos Acumulados")
+        fig_rendimientos = graficar_linea(
+            data, 
+            x_column=data.index, 
+            y_column=(1 + retornos).cumprod(),  # Rendimientos acumulados
+            title=f"Rendimientos Acumulados - {descripcion['nombre']}",
+            labels={"x": "Fecha", "y": "Rendimientos Acumulados"}
+        )
+        st.plotly_chart(fig_rendimientos)
+
+        # 3. Gráfica de distribución de retornos con VaR y CVaR
+        st.write("### Distribución de Retornos")
+        fig_dist = px.histogram(
+            retornos,
+            nbins=50,
+            title="Distribución de Retornos",
+            labels={"value": "Retornos", "index": "Frecuencia"}
+        )
+        # Añadir líneas para VaR y CVaR
+        fig_dist.add_vline(x=VaR_95, line_dash="dash", line_color="red", annotation_text="VaR 95%", annotation_position="top left")
+        fig_dist.add_vline(x=CVaR_95, line_dash="dot", line_color="orange", annotation_text="CVaR 95%", annotation_position="top left")
+        st.plotly_chart(fig_dist)
+
+        # 4. Serie de tiempo del precio con drawdowns y watermark
+        st.write("### Serie de Tiempo del Precio con Drawdowns y Watermark")
+        # Convertir 'precios' a unidimensional
+    precios_unidimensional = precios.values.flatten()
     
-        # Graficar rendimientos acumulados
-        fig_acum = graficar_rendimientos_acumulados(data, titulo=f"Rendimientos Acumulados de {ticker}")
-        st.plotly_chart(fig_acum, use_container_width=True)
-        
-        # Guardar los rendimientos acumulados de este ETF
-        rendimientos_acumulados[ticker] = data['Rendimiento Acumulado']
+    # Asegurar que drawdown sea un arreglo NumPy unidimensional
+    drawdown = drawdown.values.flatten()
     
-    # Graficar todos los rendimientos acumulados al final
-    st.subheader("Comparativa de Rendimientos Acumulados")
-    fig_comparativa = go.Figure()
-    for ticker, rend_acum in rendimientos_acumulados.items():
-        fig_comparativa.add_trace(go.Scatter(x=rend_acum.index, y=rend_acum, name=ticker))
+    # Verificar dimensiones
+    if len(precios_unidimensional) != len(drawdown):
+        st.error("Las dimensiones de precios_unidimensional y drawdown no coinciden.")
+        drawdown = np.resize(drawdown, precios_unidimensional.shape)
     
-    fig_comparativa.update_layout(
-        title="Rendimientos Acumulados de Todos los ETF's",
-        xaxis_title="Fecha",
-        yaxis_title="Rendimiento Acumulado",
-        height=600
+    # Calcular la curva de drawdown
+    drawdown_curve = precios_unidimensional + (drawdown * precios_unidimensional)
+    
+    # Crear el gráfico
+    fig_drawdown = px.line(
+        x=data.index,
+        y=precios_unidimensional,  # Ahora es unidimensional
+        title=f"Precio del ETF - {descripcion['nombre']}",
+        labels={"x": "Fecha", "y": "Precio del ETF"}
     )
-    st.plotly_chart(fig_comparativa, use_container_width=True)
+    
+    # Añadir Watermark y Drawdowns como capas
+    fig_drawdown.add_scatter(x=data.index, y=watermark, mode="lines", name="Watermark", line=dict(color="blue", dash="dash"))
+    fig_drawdown.add_scatter(x=data.index, y=drawdown_curve, mode="lines", name="Drawdown", line=dict(color="red", dash="dot"))
+    
+    # Mostrar el gráfico
+    st.plotly_chart(fig_drawdown)
 
 
 
-
-
-#===================================================================================================================================================================================
 # --- Portafolios Óptimos ---
 with tabs[3]:
-    st.header("Portafolios Óptimos con la Teoría de Markowitz")
+    st.header("Portafolios Óptimos (2010-2020)")
 
-    # Cargar los retornos de la ventana de tiempo e implementar la optimizacion
-    retornos = cargar_datos_y_retornos(tickers, "2010-01-01", "2020-01-01")
-    pesos_min_vol = optimizar_portafolio_markowitz(retornos, metodo="min_vol")
-    pesos_sharpe = optimizar_portafolio_markowitz(retornos, metodo="sharpe")
-    pesos_target = optimizar_portafolio_markowitz(retornos, metodo="target", objetivo=0.00039)  # 10% anual ≈ 0.00039 diario
+    # Descargar datos históricos para el periodo 2010-2020
+    datos_2010_2020 = cargar_datos(list(tickers.keys()), "2010-01-01", "2020-01-01")
+    retornos_2010_2020 = pd.DataFrame({k: v["Retornos"] for k, v in datos_2010_2020.items()}).dropna()
 
-    # Calcular rendimiento y volatilidad para cada portafolio
-    rendimiento_min_vol, volatilidad_min_vol = calcular_rendimiento_volatilidad(pesos_min_vol, retornos)
-    rendimiento_sharpe, volatilidad_sharpe = calcular_rendimiento_volatilidad(pesos_sharpe, retornos)
-    rendimiento_target, volatilidad_target = calcular_rendimiento_volatilidad(pesos_target, retornos)
-
-    # Lista de tickers
-    tickers_list = list(tickers.keys())
-
-    # Pesos para Mínima Volatilidad
+    # 1. Portafolio de Mínima Volatilidad
     st.subheader("Portafolio de Mínima Volatilidad")
-    st.write(f"**Rendimiento diario:** {rendimiento_min_vol:.4%} | **Rendimiento anualizado:** {(1 + rendimiento_min_vol) ** 252 - 1:.4%}")
-    st.write(f"**Volatilidad diaria:** {volatilidad_min_vol:.4}| **Volatilidad anualizada:** {volatilidad_min_vol * np.sqrt(252):.4}")
-    for ticker, peso in zip(tickers_list, pesos_min_vol):
+    pesos_min_vol = optimizar_portafolio_markowitz(retornos_2010_2020, metodo="min_vol")
+    st.write("Pesos del Portafolio de Mínima Volatilidad:")
+    for ticker, peso in zip(tickers.keys(), pesos_min_vol):
         st.write(f"{ticker}: {peso:.2%}")
-    fig_min_vol = px.bar(x=tickers_list, y=pesos_min_vol, labels={'x': 'Ticker', 'y': 'Peso'}, 
-                         title="Pesos - Portafolio de Mínima Volatilidad")
+    fig_min_vol = px.bar(x=list(tickers.keys()), y=pesos_min_vol, title="Pesos - Mínima Volatilidad")
     st.plotly_chart(fig_min_vol)
 
-        # Pesos para Máximo Sharpe Ratio
+    # 2. Portafolio de Máximo Sharpe Ratio
     st.subheader("Portafolio de Máximo Sharpe Ratio")
-    st.write(f"**Rendimiento diario:** {rendimiento_sharpe:.4%} | **Rendimiento anualizado:** {(1 + rendimiento_sharpe) ** 252 - 1:.4%}")
-    st.write(f"**Volatilidad diaria:** {volatilidad_sharpe:.4}| **Volatilidad anualizada:** {volatilidad_sharpe * np.sqrt(252):.4}")
-    for ticker, peso in zip(tickers_list, pesos_sharpe):
+    pesos_sharpe = optimizar_portafolio_markowitz(retornos_2010_2020, metodo="sharpe")
+    st.write("Pesos del Portafolio de Máximo Sharpe Ratio:")
+    for ticker, peso in zip(tickers.keys(), pesos_sharpe):
         st.write(f"{ticker}: {peso:.2%}")
-    fig_sharpe = px.bar(x=tickers_list, y=pesos_sharpe, labels={'x': 'Ticker', 'y': 'Peso'}, 
-                        title="Pesos - Portafolio de Máximo Sharpe Ratio")
+    fig_sharpe = px.bar(x=list(tickers.keys()), y=pesos_sharpe, title="Pesos - Máximo Sharpe Ratio")
     st.plotly_chart(fig_sharpe)
 
-    # Pesos para Mínima Volatilidad con Rendimiento Objetivo
-    st.subheader("Portafolio de Mínima Volatilidad con 10% Rendimiento Anual")
-    st.write(f"**Rendimiento diario:** {rendimiento_target:.4%} | **Rendimiento anualizado:** {(1 + rendimiento_target) ** 252 - 1:.4%}")
-    st.write(f"**Volatilidad diaria:** {volatilidad_target:.4}| **Volatilidad anualizada:** {volatilidad_target * np.sqrt(252):.4}")
-    for ticker, peso in zip(tickers_list, pesos_target):
-        st.write(f"{ticker}: {peso:.2%}")
-    fig_target = px.bar(x=tickers_list, y=pesos_target, labels={'x': 'Ticker', 'y': 'Peso'}, 
-                        title="Pesos - Mínima Volatilidad con 10% Rendimiento Anual")
-    st.plotly_chart(fig_target)
-
-    portafolios_optimos = {
-    "Mínima Varianza": pesos_min_vol,
-    "Máximo Sharpe Ratio": pesos_sharpe,
-    "Mínima Volatilidad (10% Rend.)": pesos_target
-    }
-
-    # Calcular la frontera eficiente
-    rendimientos, volatilidades, pesos = frontera_eficiente(retornos)
-
-    # Graficar la frontera eficiente
-    fig_frontera = graficar_frontera_eficiente(rendimientos, volatilidades, pesos, portafolios_optimos)
-
-    # Mostrar en Streamlit
-    st.plotly_chart(fig_frontera)
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#===================================================================================================================================================================================
 # --- Backtesting ---
 with tabs[4]:
-    st.header("Backtesting")
+    st.header("Backtesting (2021-2023)")
+
+    # Descargar datos históricos para el periodo 2021-2023
+    datos_2021_2023 = cargar_datos(list(tickers.keys()), "2021-01-01", "2023-01-01")
+    retornos_2021_2023 = pd.DataFrame({k: v["Retornos"] for k, v in datos_2021_2023.items()}).dropna()
+
+    # Crear DataFrame para guardar los rendimientos acumulados de cada portafolio
+    rendimientos_acumulados = pd.DataFrame(index=retornos_2021_2023.index)
+
+ 
+
+        # Calcular Drawdown y Watermark
+        #drawdown, watermark = calcular_drawdown_y_watermark(precios)
+
+ 
+
+    # Calcular rendimientos acumulados para cada portafolio
+    st.subheader("Rendimientos Acumulados de los Portafolios")
+    for nombre, pesos in [
+        ("Mínima Volatilidad", pesos_min_vol),
+        ("Máximo Sharpe Ratio", pesos_sharpe),
+    ]:
+        pesos_reshaped = np.array(pesos).reshape(-1, 1)
+        rendimientos = retornos_2021_2023.dot(pesos_reshaped)
+        rendimientos_acumulados[nombre] = rendimientos.cumsum()
+        st.write(f"Rendimientos Acumulados - {nombre}")
+        st.line_chart(rendimientos.cumsum())
+
+
+
+# Crear una lista para almacenar métricas de ambos grupos
+metricas_dict = {
+    "Métrica": ["Media (%)", "Volatilidad (%)", "Sesgo", "Curtosis", "Sharpe Ratio", "Sortino Ratio", "VaR 95%", "CVaR 95%"],
+    "Mínima Volatilidad": [],
+    "Máximo Sharpe Ratio": [],
+}
+
+# Iterar sobre los grupos y calcular las métricas
+for nombre, pesos in [
+    ("Mínima Volatilidad", pesos_min_vol),
+    ("Máximo Sharpe Ratio", pesos_sharpe),
+]:
+    # Calcular métricas estadísticas
+    rendimientos = retornos_2021_2023.dot(pesos.reshape(-1, 1))        
+    media = rendimientos.mean() * 100
+    volatilidad = rendimientos.std() * 100
+    sesgo = skew(rendimientos)
+    curtosis = kurtosis(rendimientos)
+    sharpe = media / volatilidad if volatilidad != 0 else np.nan
+    sortino = media / rendimientos[rendimientos < 0].std() if rendimientos[rendimientos < 0].std() != 0 else np.nan
+    VaR_95 = np.percentile(rendimientos, 5)
+    CVaR_95 = rendimientos[rendimientos <= VaR_95].mean()
+
+    # Agregar métricas al diccionario
+    metricas_dict[nombre].extend([media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95])
+
+# Crear el DataFrame final
+metricas_df = pd.DataFrame(metricas_dict)
+
+# Mostrar la tabla en Streamlit
+st.write("### Comparación de Métricas")
+st.table(metricas_df)
 
 
 
 
+    # Graficar todos los portafolios en una sola gráfica
+    fig_rendimientos = px.line(
+        rendimientos_acumulados,
+        title="Rendimientos Acumulados - Comparación de Portafolios",
+        labels={"value": "Rendimientos Acumulados", "index": "Fecha"}
+    )
+    st.plotly_chart(fig_rendimientos)
 
 
-
-
-#===================================================================================================================================================================================    
 # --- Modelo de Black-Litterman ---
 with tabs[5]:
-    st.header("Modelo de Black-Litterman")
-
-
-
-
-
-
-
-
-
+    st.header("Modelo de Optimización Black-Litterman")
+    P = np.array([
+        [1, 0, 0, 0, 0],  # TLT tiene un rendimiento esperado de 3%
+        [0, 1, 0, 0, 0],  # EMB tiene un rendimiento esperado de 6%
+        [0, 0, 1, 0, 0],  # SPY tiene un rendimiento esperado de 8%
+        [0, 0, 0, 1, 0],  # VWO tiene un rendimiento esperado de 11%
+        [0, 0, 0, 0, 1]   # GLD tiene un rendimiento esperado de 4%
+    ])
+    Q = np.array([0.03, 0.06, 0.08, 0.11, 0.04])
+    pesos_black_litterman = black_litterman_optimizar(retornos_2010_2020, P, Q)
+    st.write("Pesos del Portafolio Ajustado con el Modelo de Black-Litterman:")
+    for ticker, peso in zip(tickers.keys(), pesos_black_litterman):
+        st.write(f"{ticker}: {peso:.2%}")
+    fig_black_litterman = px.bar(x=list(tickers.keys()), y=pesos_black_litterman, title="Pesos Ajustados - Black-Litterman")
+    st.plotly_chart(fig_black_litterman)
