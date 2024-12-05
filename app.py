@@ -443,8 +443,10 @@ with tabs[4]:
         ("Máximo Sharpe Ratio", pesos_sharpe)
     ]
 
-    # Lista para almacenar las métricas de cada portafolio
-    metricas_totales = []
+
+
+    # Inicializamos un DataFrame vacío para almacenar las métricas combinadas por columnas
+    metricas_totales = pd.DataFrame(columns=["Métrica", "Portafolio"])
 
     # Bucle para iterar sobre los portafolios
     for nombre, pesos in portafolios:
@@ -466,9 +468,21 @@ with tabs[4]:
             "Métrica": ["Media (%)", "Volatilidad (%)", "Sesgo", "Curtosis", "Sharpe Ratio", "Sortino Ratio", "VaR 95%", "CVaR 95%"],
             "Valor": [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95]
         })
+        
+        # Añadimos el nombre del portafolio como columna
+        metricas["Portafolio"] = nombre
 
-        # Añadimos las métricas del portafolio actual a la lista de métricas
-        df_unido = pd.concat([metricas_totales, metricas], axis=0, ignore_index=True)
+        # Unimos las métricas por columnas con el DataFrame total
+        if metricas_totales.empty:
+            # Si es el primer portafolio, inicializamos el DataFrame con las métricas del primer portafolio
+            metricas_totales = metricas
+        else:
+            # Si no es el primer portafolio, unimos por columnas
+            metricas_totales = pd.concat([metricas_totales.set_index('Métrica'), metricas.set_index('Métrica')], axis=1)
+
+    # Mostrar las métricas combinadas por columnas
+    st.write(metricas_totales)
+
 
     # Combinamos todas las métricas de los portafolios en un solo DataFrame
     #metricas_finales = pd.concat(metricas_totales, ignore_index=True)
