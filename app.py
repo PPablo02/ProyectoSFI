@@ -478,14 +478,9 @@ with tabs[4]:
 
     # Crear el DataFrame final
     metricas = [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95]
-    metricas_series = [pd.Series(m) if not isinstance(m, (pd.Series, pd.DataFrame)) else m for m in metricas]
 
-    # Concatenar
-    metricas_df = pd.concat(metricas_series, axis=0, ignore_index=True)
-    print(metricas_df)
-    # Mostrar la tabla en Streamlit
-    st.write("### Comparación de Métricas")
-    st.table(metricas_df)
+    print(metricas) 
+
 
 
 
