@@ -440,9 +440,16 @@ with tabs[4]:
     #Métricas por cada portafolio, hay que incluir rendimientos acumulados, sesgo, curtosis, VaR, CVAR, sharp, sortino y drowdown
     retornos_min_vol = np.sum(retornos_2021_2023 * pesos_min_vol, axis = 1)
 
+    media = retornos_min_vol.mean() * 100
+    volatilidad = retornos_min_vol.std() * 100
+    sesgo = skew(retornos_min_vol)
+    curtosis = kurtosis(retornos_min_vol)
+    sharpe = media / volatilidad if volatilidad != 0 else np.nan
+    sortino = media / retornos_min_vol[retornos_min_vol < 0].std() if retornos_min_vol[retornos_min_vol < 0].std() != 0 else np.nan
+    VaR_95 = np.percentile(retornos_min_vol, 5)
+    CVaR_95 = retornos_min_vol[retornos_min_vol <= VaR_95].mean()
 
-
-    st.write("Contenido de la variable `datos_2021_2023`:", retornos_min_vol)
+    st.write("Contenido de la variable `datos_2021_2023`:", [media,volatilidad,sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95 ])
 
 
     # Calcular rendimientos acumulados para cada portafolio
