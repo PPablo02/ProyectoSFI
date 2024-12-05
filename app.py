@@ -443,7 +443,7 @@ with tabs[4]:
         ("Mínima Volatilidad", pesos_min_vol),
         ("Máximo Sharpe Ratio", pesos_sharpe)
     ]    
-    metricas_totales = []
+    metricas_final = [0,0,0,0,0,0,0,0]
 
     # Bucle para iterar sobre los portafolios
     for nombre, pesos in portafolios:
@@ -462,11 +462,11 @@ with tabs[4]:
 
         # Guardamos las métricas en un DataFrame
         metricas = [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95]
-        metricas_final = list(zip([0,0,0,0,0,0,0,0], metricas))
+        metricas_final = list(zip(metricas_final, metricas))
 
 
     # Mostrar las métricas combinadas
-    st.write(metricas_final)
+    st.write(pd.DataFrame(metricas_final, columns=['Columna1', 'Columna2', 'columna3', 'columna 4']))
 
 
     # Combinamos todas las métricas de los portafolios en un solo DataFrame
