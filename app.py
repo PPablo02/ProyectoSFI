@@ -429,18 +429,19 @@ with tabs[4]:
     retornos_2021_2023 = pd.DataFrame({k: v["Retornos"] for k, v in datos_2021_2023.items()}).dropna()
 
 
-    st.write("Contenido de la variable `datos_2021_2023`:", retornos_2021_2023)
     # Crear DataFrame para guardar los rendimientos acumulados de cada portafolio
     rendimientos_acumulados = pd.DataFrame(index=retornos_2021_2023.index)
 
- 
+    
 
         # Calcular Drawdown y Watermark
         #drawdown, watermark = calcular_drawdown_y_watermark(precios)
 
     #Métricas por cada portafolio, hay que incluir rendimientos acumulados, sesgo, curtosis, VaR, CVAR, sharp, sortino y drowdown
-    
+    media_min_vol = np.sum(retornos_2021_2023 * pesos_min_vol, axis=0)
 
+
+    st.write("Contenido de la variable `datos_2021_2023`:", media_min_vol)
 
 
     # Calcular rendimientos acumulados para cada portafolio
