@@ -468,13 +468,13 @@ with tabs[4]:
         })
 
         # Añadimos las métricas del portafolio actual a la lista de métricas
-        metricas_totales.concat(metricas)
+        df_unido = pd.concat([metricas_totales, metricas], axis=0, ignore_index=True)
 
     # Combinamos todas las métricas de los portafolios en un solo DataFrame
-    metricas_finales = pd.concat(metricas_totales, ignore_index=True)
+    #metricas_finales = pd.concat(metricas_totales, ignore_index=True)
 
     # Mostrar las métricas combinadas
-    st.write(metricas_totales)
+    st.write(df_unido)
 
 
 
