@@ -436,8 +436,8 @@ with tabs[4]:
     #Métricas por cada portafolio, hay que incluir rendimientos acumulados, sesgo, curtosis, VaR, CVAR, sharp, sortino y drowdown
     #Comenzamos con el portafolio de mínima volatilidad
     #Extraemos los rendimientos
- # Lista de portafolios y sus respectivos pesos
-# Lista de portafolios y sus respectivos pesos
+    #   Lista de portafolios y sus respectivos pesos
+    # Lista de portafolios y sus respectivos pesos
     portafolios = [
         ("Mínima Volatilidad", pesos_min_vol),
         ("Máximo Sharpe Ratio", pesos_sharpe)
