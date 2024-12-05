@@ -466,7 +466,7 @@ with tabs[4]:
 
 
     # Mostrar las métricas combinadas
-    st.write(pd.DataFrame(metricas_final, columns=['Columna1', 'Columna2', 'columna3', 'columna 4']))
+    st.write(pd.DataFrame(metricas_final, columns=['Columna1', 'Columna2']))
 
 
     # Combinamos todas las métricas de los portafolios en un solo DataFrame
