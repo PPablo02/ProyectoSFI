@@ -479,9 +479,11 @@ with tabs[4]:
         else:
             # Si no es el primer portafolio, unimos por columnas
             metricas_totales = pd.concat([metricas_totales.set_index('Métrica'), metricas.set_index('Métrica')], axis=1)
+    
+    metricas_totales.reset_index(drop=True, inplace=True)
 
     # Mostrar las métricas combinadas por columnas
-    st.write(metricas_totales)
+    st.dataframe(metricas_totales)
 
 
     # Combinamos todas las métricas de los portafolios en un solo DataFrame
