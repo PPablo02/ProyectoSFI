@@ -476,10 +476,15 @@ with tabs[4]:
 
   
 
-    # Crear el DataFrame final
-    metricas = [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95]
+    # Crear DataFrame de métricas con nombres
+    metricas_df = {
+        'Métrica': ['Media', 'Volatilidad', 'Sesgo', 'Curtosis', 'Sharpe Ratio', 'Sortino Ratio', 'VaR 95%', 'CVaR 95%'],
+        'Valor': [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95],
+    }
 
-    print(metricas) 
+    # Mostrar la tabla en Streamlit
+    st.write("### Comparación de Métricas")
+    st.table(metricas_df)
 
 
 
