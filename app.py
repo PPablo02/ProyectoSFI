@@ -209,8 +209,8 @@ def optimizar_portafolio_markowitz(retornos, metodo="min_vol", objetivo=None):
     else:
         objetivo_funcion = riesgo
     
-    # Definir los límites de los pesos (entre 0 y 1)
-    limites = [(0, 1) for _ in range(n)]
+    # Definir los límites de los pesos 
+    limites = [(-1, 1) for _ in range(n)]
     
     # Optimización
     resultado = minimize(objetivo_funcion, w_inicial, constraints=restricciones, bounds=limites)
