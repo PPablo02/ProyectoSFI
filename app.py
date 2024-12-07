@@ -547,6 +547,8 @@ with tabs[4]:
         metricas_final = np.column_stack((metricas_final, metricas))
     #metricas_final = np.column_stack((metricas_final, sp_metricas))
 
+
+
     metricas_final = metricas_final[:,1:]
     metricas_final = np.column_stack((metricas_final,sp_metricas))
 
@@ -554,12 +556,9 @@ with tabs[4]:
     st.write(pd.DataFrame(metricas_final, columns=['Mínima volatilidad', 'Máximo sharp ratio', 'Equitativo', 'S&P 500'], index = 
                           ["Media (%)", "Volatilidad (%)", "Sesgo", "Curtosis", "Sharpe Ratio", "Sortino Ratio", "VaR 95%", "CVaR 95%"]))
 
-    st.write(sp_metricas)
+
     # Combinamos todas las métricas de los portafolios en un solo DataFrame
     #metricas_finales = pd.concat(metricas_totales, ignore_index=True)
-
-
-
 
 
 
@@ -571,6 +570,7 @@ with tabs[4]:
     for nombre, pesos in [
         ("Mínima Volatilidad", pesos_min_vol),
         ("Máximo Sharpe Ratio", pesos_sharpe),
+        ("Equitativo", [0.2, 0.2, 0.2, 0.2, 0.2])
     ]:
         pesos_reshaped = np.array(pesos).reshape(-1, 1)
         rendimientos = retornos_2021_2023.dot(pesos_reshaped)
