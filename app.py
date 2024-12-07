@@ -503,27 +503,33 @@ with tabs[4]:
     # Lista de portafolios y sus respectivos pesos
 
     #También incluimos la comparación con el SP500
+
+
+    # Datos del S&P 500
     sp500 = cargar_datos(list(["^GSPC"]), "2021-01-01", "2023-01-01")
     sp_retornos = pd.DataFrame({k: v["Retornos"] for k, v in sp500.items()}).dropna()
 
-
-    sp_media_retornos = sp_retornos.mean()*100
-    sp_vol = sp_retornos.std()*100
+    # Métricas para el S&P 500
+    sp_media_retornos = sp_retornos.mean() * 100
+    sp_vol = sp_retornos.std() * 100
     sp_sesgo = skew(sp_retornos)
     sp_curtosis = kurtosis(sp_retornos)
-    sp_sharpe = sp_media_retornos/sp_vol
-    sortino = sp_media_retornos / sp_retornos[sp_retornos<0].std()
-    sp_var95 = np.percentile(sp_retornos,5)
+    sp_sharpe = sp_media_retornos / sp_vol
+    sortino = sp_media_retornos / sp_retornos[sp_retornos < 0].std()
+    sp_var95 = np.percentile(sp_retornos, 5)
     sp_cvar95 = sp_retornos[sp_retornos <= sp_var95].mean()
 
-    sp_metricas = [sp_media_retornos,sp_vol,sp_sesgo,sp_curtosis,sp_sharpe,sortino,sp_var95,sp_cvar95]
+    sp_metricas = [sp_media_retornos, sp_vol, sp_sesgo, sp_curtosis, sp_sharpe, sortino, sp_var95, sp_cvar95]
 
+    # Portafolios
     portafolios = [
         ("Mínima Volatilidad", pesos_min_vol),
         ("Máximo Sharpe Ratio", pesos_sharpe),
         ("Equitativo", [0.2, 0.2, 0.2, 0.2, 0.2])
-    ]    
-    metricas_final = [0,0,0,0,0,0,0,0]
+    ]
+
+    # Inicializamos metricas_final como un array vacío
+    metricas_final = []
 
     # Bucle para iterar sobre los portafolios
     for nombre, pesos in portafolios:
@@ -540,11 +546,19 @@ with tabs[4]:
         VaR_95 = np.percentile(retornos, 5)
         CVaR_95 = retornos[retornos <= VaR_95].mean()
 
-        # Guardamos las métricas en un DataFrame
+        # Guardamos las métricas en una lista
         metricas = [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95]
-        metricas_final = np.column_stack((metricas_final, metricas))
+        metricas_final.append(metricas)
 
-    metricas_final = np.column_stack((metricas_final, sp_metricas))
+    # Convertimos la lista de métricas a un array de NumPy
+    metricas_final = np.array(metricas_final)
+
+    # Ahora agregamos las métricas del S&P 500
+    metricas_final = np.column_stack((metricas_final, np.array(sp_metricas)))
+
+    # Puedes imprimir las métricas finales para verificar
+    print(metricas_final)
+
 
     metricas_final = metricas_final[:,1:]
     # Mostrar las métricas combinadas
