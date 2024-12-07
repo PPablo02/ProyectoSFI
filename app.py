@@ -424,6 +424,12 @@ with tabs[3]:
 with tabs[4]:
     st.header("Backtesting (2021-2023)")
 
+    st.write(""" 
+    En esta sección se pusieron a prueba las optimizaciones obtenidas. Para ello se empleó la técnica de backtesting, 
+             en la cual las estrategias fueron implementadas para el periodo de 2021 a 2023. Esta técnica nos permite conocer 
+             la efectividad de los modelos antes de implementarlos en un portafolios. 
+    """)
+
     # Descargar datos históricos para el periodo 2021-2023
     datos_2021_2023 = cargar_datos(list(tickers.keys()), "2021-01-01", "2023-01-01")
     retornos_2021_2023 = pd.DataFrame({k: v["Retornos"] for k, v in datos_2021_2023.items()}).dropna()
