@@ -543,14 +543,14 @@ with tabs[4]:
         # Guardamos las métricas en un DataFrame
         metricas = [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95]
         metricas_final = np.column_stack((metricas_final, metricas))
+
     metricas_final = np.column_stack((metricas_final, sp_metricas))
 
     metricas_final = metricas_final[:,1:]
     # Mostrar las métricas combinadas
-    st.write(pd.DataFrame(metricas_final, columns=['Mínima volatilidad', 'Máximo sharp ratio', 'Equitativo'], index = 
+    st.write(pd.DataFrame(metricas_final, columns=['Mínima volatilidad', 'Máximo sharp ratio', 'Equitativo', 'S&P 500'], index = 
                           ["Media (%)", "Volatilidad (%)", "Sesgo", "Curtosis", "Sharpe Ratio", "Sortino Ratio", "VaR 95%", "CVaR 95%"]))
 
-    st.write(print(sp_retornos.shape) , print(retornos.shape) )
     # Combinamos todas las métricas de los portafolios en un solo DataFrame
     #metricas_finales = pd.concat(metricas_totales, ignore_index=True)
 
