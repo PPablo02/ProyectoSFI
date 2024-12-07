@@ -469,7 +469,7 @@ with tabs[3]:
         vol, ret = portfolio_performance(weights, mean_returns, cov_matrix, risk_aversion_lambda)
         return vol
 
-
+    n = len(mean_returns)
     # Optimizar para minimizar la volatilidad con el rendimiento objetivo
     opt_target = sco.minimize(min_volatility_for_target_return, n * [1. / n,],
                             args=(mean_returns, cov_matrix, target_return),
