@@ -552,7 +552,7 @@ with tabs[4]:
     st.write(pd.DataFrame(metricas_final, columns=['Mínima volatilidad', 'Máximo sharp ratio', 'Equitativo'], index = 
                           ["Media (%)", "Volatilidad (%)", "Sesgo", "Curtosis", "Sharpe Ratio", "Sortino Ratio", "VaR 95%", "CVaR 95%"]))
 
-    st.write(print(sp_retornos.shape) , print(retornos.shape) )
+    st.write(sp_metricas)
     # Combinamos todas las métricas de los portafolios en un solo DataFrame
     #metricas_finales = pd.concat(metricas_totales, ignore_index=True)
 
