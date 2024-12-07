@@ -503,7 +503,7 @@ with tabs[4]:
     # Lista de portafolios y sus respectivos pesos
 
     #También incluimos la comparación con el SP500
-    sp500 = cargar_datos(list(["^GSPC"]), "2010-01-01", "2023-01-01")
+    sp500 = cargar_datos(list(["^GSPC"]), "2021-01-01", "2023-01-01")
     sp_retornos = pd.DataFrame({k: v["Retornos"] for k, v in sp500.items()}).dropna()
 
     sp_media_retornos = sp_retornos.mean()*100
