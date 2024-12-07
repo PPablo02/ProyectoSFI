@@ -544,22 +544,9 @@ with tabs[3]:
         marker=dict(color='RoyalBlue', size=15, symbol='star'),
         name='Máximo Sharpe'
     )
+    
+    
 
-    # Agregar el portafolio objetivo
-    opt_target_vol, opt_target_ret = portfolio_performance(
-        opt_target.x, mean_returns, cov_matrix, risk_aversion_lambda
-    )
-    fig.add_scatter(
-        mode='markers',
-        x=[opt_target_vol],
-        y=[opt_target_ret],
-        marker=dict(color='green', size=15, symbol='circle'),
-        name='Portafolio Objetivo'
-    )
-
-    # Configurar ejes y mostrar la gráfica
-    fig.update_xaxes(title="Volatilidad")
-    fig.update_yaxes(title="Rendimiento")
     st.plotly_chart(fig)
 
 
