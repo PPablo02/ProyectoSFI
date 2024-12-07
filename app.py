@@ -342,7 +342,6 @@ with tabs[0]:
     st.write(""" 
     Este proyecto tiene como objetivo analizar y optimizar un portafolio utilizando ETFs en diferentes clases de activos, tales como renta fija, renta variable, y materias primas. A lo largo del proyecto, se evaluará el rendimiento de estos activos a través de diversas métricas financieras y técnicas de optimización de portafolios, como la optimización de mínima volatilidad y la maximización del Sharpe Ratio. 
     """)
-    st.write("Integrantes: Emmanuel Reyes Hernández \n Fuentes Soriano Adrián \n Mariana Vigil Villegas\n Pablo Pineda Pineda ")
 
 # --- Selección de ETF's ---
 with tabs[1]:
