@@ -550,21 +550,10 @@ with tabs[4]:
         metricas = [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95]
         metricas_final.append(metricas)
 
-    # Convertimos la lista de métricas a un array de NumPy
-    metricas_final = np.array(metricas_final)
-
-    sp_metricas = np.array(sp_metricas).reshape(1, -1)  # Convertir a una fila
-
-    # Ahora agregamos las métricas del S&P 500
-    metricas_final = np.column_stack((metricas_final, sp_metricas))
-
-    # Puedes imprimir las métricas finales para verificar
-    print(metricas_final)
-
-
+  
     metricas_final = metricas_final[:,1:]
     # Mostrar las métricas combinadas
-    st.write(pd.DataFrame(metricas_final, columns=['Mínima volatilidad', 'Máximo sharp ratio', 'Equitativo', 'S&P 500'], index = 
+    st.write(pd.DataFrame(metricas_final, columns=['Mínima volatilidad', 'Máximo sharp ratio', 'Equitativo'], index = 
                           ["Media (%)", "Volatilidad (%)", "Sesgo", "Curtosis", "Sharpe Ratio", "Sortino Ratio", "VaR 95%", "CVaR 95%"]))
 
     # Combinamos todas las métricas de los portafolios en un solo DataFrame
