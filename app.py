@@ -352,21 +352,6 @@ with tabs[1]:
     datos_2010_hoy = cargar_datos(list(tickers.keys()), "2010-01-01", hoy)
 
 
-        # --- Visualización de ETFs ---
-    st.header("Características de los ETFs")
-    etf_caracteristicas = pd.DataFrame({
-        "Ticker": list(tickers.keys()),
-        "Nombre": [info.get("nombre", "No especificado") for info in tickers.values()],
-        "Índice": [info.get("indice", "No especificado") for info in tickers.values()],
-        "Exposición Ganada": [info.get("exposicion_ganada", "No especificado") for info in tickers.values()],
-        "Países de Inversión": [", ".join(info.get("pais_inversion", ["No especificado"])) for info in tickers.values()],
-        "Moneda": [info.get("moneda", "No especificado") for info in tickers.values()],
-        "Estilo": [info.get("estilo", "No especificado") for info in tickers.values()],
-        "Gastos (%)": [info.get("gastos", "No especificado") for info in tickers.values()],
-        "Duración": [info.get("duracion", "No especificado") for info in tickers.values()],
-        "Beta": [info.get("beta", "No especificado") for info in tickers.values()],
-        "Rendimiento YTD (%)": [info.get("rendimiento_ytd", "No especificado") for info in tickers.values()],
-    })
 
     # Crear un DataFrame consolidado con las características de los ETFs
     etf_caracteristicas = pd.DataFrame({
