@@ -270,10 +270,6 @@ def portfolio_performance(weights, mean_returns, cov_matrix, risk_aversion_lambd
 # El target de 10% anual se define en la siguiente variable
 target_return = 0.10
 
-# Función objetivo para minimizar la volatilidad dado un rendimiento objetivo
-def min_volatility_for_target_return(weights, mean_returns, cov_matrix, target_return):
-    vol, ret = portfolio_performance(weights, mean_returns, cov_matrix, risk_aversion_lambda)
-    return vol
 
 #También calculamos constantes útiles a  lo largo del desarrollo del código 
 
@@ -468,6 +464,10 @@ with tabs[3]:
         {'type': 'eq', 'fun': lambda x: np.sum(x) - 1},  # Sum of weights is 1
         {'type': 'eq', 'fun': lambda x: np.sum(x * mean_returns) * 252 - target_return}  # Target return
     )
+    # Función objetivo para minimizar la volatilidad dado un rendimiento objetivo
+    def min_volatility_for_target_return(weights, mean_returns, cov_matrix, target_return):
+        vol, ret = portfolio_performance(weights, mean_returns, cov_matrix, risk_aversion_lambda)
+        return vol
 
 
     # Optimizar para minimizar la volatilidad con el rendimiento objetivo
