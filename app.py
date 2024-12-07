@@ -548,7 +548,7 @@ with tabs[4]:
     #metricas_final = np.column_stack((metricas_final, sp_metricas))
 
     metricas_final = metricas_final[:,1:]
-    metricas_final = np.column_stac((metricas_final,sp_metricas))
+    metricas_final = np.column_stack((metricas_final,sp_metricas))
 
     # Mostrar las métricas combinadas
     st.write(pd.DataFrame(metricas_final, columns=['Mínima volatilidad', 'Máximo sharp ratio', 'Equitativo', 'S&P 500'], index = 
