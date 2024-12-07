@@ -506,6 +506,7 @@ with tabs[4]:
     sp500 = cargar_datos(list(["^GSPC"]), "2021-01-01", "2023-01-01")
     sp_retornos = pd.DataFrame({k: v["Retornos"] for k, v in sp500.items()}).dropna()
 
+
     sp_media_retornos = sp_retornos.mean()*100
     sp_vol = sp_retornos.std()*100
     sp_sesgo = skew(sp_retornos)
@@ -549,7 +550,7 @@ with tabs[4]:
     st.write(pd.DataFrame(metricas_final, columns=['Mínima volatilidad', 'Máximo sharp ratio', 'Equitativo'], index = 
                           ["Media (%)", "Volatilidad (%)", "Sesgo", "Curtosis", "Sharpe Ratio", "Sortino Ratio", "VaR 95%", "CVaR 95%"]))
 
-
+    st.write(print(sp_retornos.shape) , print(retornos.shape) )
     # Combinamos todas las métricas de los portafolios en un solo DataFrame
     #metricas_finales = pd.concat(metricas_totales, ignore_index=True)
 
