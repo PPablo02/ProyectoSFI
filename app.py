@@ -426,8 +426,9 @@ with tabs[4]:
 
     st.write(""" 
     En esta sección se pusieron a prueba las optimizaciones obtenidas. Para ello se empleó la técnica de backtesting, 
-             en la cual las estrategias fueron implementadas para el periodo de 2021 a 2023. Esta técnica nos permite conocer 
-             la efectividad de los modelos antes de implementarlos en un portafolios. 
+             en la cual las estrategias fueron implementadas para el periodo de 2021 a 2023. Los resultados se encuentran condensados
+             en las siguientes gráficas y tablas.
+             
     """)
 
     # Descargar datos históricos para el periodo 2021-2023
