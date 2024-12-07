@@ -122,6 +122,13 @@ st.title("Análisis de ETFs")
 
 
 
+# Función para calcular rendimiento y volatilidad
+def calcular_rendimiento_volatilidad(pesos, retornos):
+        rendimiento = np.dot(pesos, retornos.mean())  # Rendimiento promedio ponderado
+        volatilidad = np.sqrt(np.dot(pesos.T, np.dot(retornos.cov(), pesos)))  # Volatilidad (riesgo)
+        return rendimiento, volatilidad
+
+
 
     
     # --- Funciones Auxiliares ---
@@ -694,11 +701,25 @@ with tabs[4]:
             line=dict(color='red', dash='solid')  # Línea roja continua
         )
     )
+    tickers_list = list(tickers.keys())
 
-    
+    pesos_target = optimizar_portafolio_markowitz(retornos, metodo="target", objetivo=0.00039)  # 10% anual ≈ 0.00039 diario
+    rendimiento_min_vol, volatilidad_min_vol = calcular_rendimiento_volatilidad(pesos_min_vol, retornos)
+    rendimiento_sharpe, volatilidad_sharpe = calcular_rendimiento_volatilidad(pesos_sharpe, retornos)
+    rendimiento_target, volatilidad_target = calcular_rendimiento_volatilidad(pesos_target, retornos)
+
+    # Pesos para Mínima Volatilidad con Rendimiento Objetivo
+    st.subheader("Portafolio de Mínima Volatilidad con 10% Rendimiento Anual")
+    st.write(f"*Rendimiento diario:* {rendimiento_target:.4%} | *Rendimiento anualizado:* {(1 + rendimiento_target) ** 252 - 1:.4%}")
+    st.write(f"*Volatilidad diaria:* {volatilidad_target:.4}| *Volatilidad anualizada:* {volatilidad_target * np.sqrt(252):.4}")
+    for ticker, peso in zip(tickers_list, pesos_target):
+        st.write(f"{ticker}: {peso:.2%}")
+    fig_target = px.bar(x=tickers_list, y=pesos_target, labels={'x': 'Ticker', 'y': 'Peso'}, 
+                        title="Pesos - Mínima Volatilidad con 10% Rendimiento Anual")
+    st.plotly_chart(fig_target)    
 
     st.plotly_chart(fig_rendimientos)
-
+    st.write("Finalmente, concluimos que ")
 
 # --- Modelo de Black-Litterman ---
 with tabs[5]:
