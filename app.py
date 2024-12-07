@@ -538,42 +538,42 @@ with tabs[3]:
     fig_sharpe = px.bar(x=list(tickers.keys()), y=pesos_sharpe, title="Pesos - Máximo Sharpe Ratio")
     st.plotly_chart(fig_sharpe)
 
-# Calcular la frontera eficiente
-frontera = calcular_frontera_eficiente(retornos_2010_2020)
+    # Calcular la frontera eficiente
+    frontera = calcular_frontera_eficiente(retornos_2010_2020)
 
-# --- Graficar la Frontera Eficiente ---
-fig = px.scatter(
-    frontera, x='port_vols', y='port_rets', color='sharpe_ratio',
-    labels={'port_vols': 'Volatilidad Esperada', 'port_rets': 'Rendimiento Esperado', 'sharpe_ratio': 'Sharpe Ratio'},
-    title="Frontera Eficiente Simulada"
-).update_traces(mode='markers', marker=dict(symbol='cross'))
+    # --- Graficar la Frontera Eficiente ---
+    fig = px.scatter(
+        frontera, x='port_vols', y='port_rets', color='sharpe_ratio',
+        labels={'port_vols': 'Volatilidad Esperada', 'port_rets': 'Rendimiento Esperado', 'sharpe_ratio': 'Sharpe Ratio'},
+        title="Frontera Eficiente Simulada"
+    ).update_traces(mode='markers', marker=dict(symbol='cross'))
 
-# Agregar el portafolio de máximo Sharpe Ratio
-max_sharpe_idx = frontera['sharpe_ratio'].idxmax()
-fig.add_scatter(
-    mode='markers',
-    x=[frontera.loc[max_sharpe_idx, 'port_vols']],
-    y=[frontera.loc[max_sharpe_idx, 'port_rets']],
-    marker=dict(color='RoyalBlue', size=15, symbol='star'),
-    name='Máximo Sharpe'
-)
+    # Agregar el portafolio de máximo Sharpe Ratio
+    max_sharpe_idx = frontera['sharpe_ratio'].idxmax()
+    fig.add_scatter(
+        mode='markers',
+        x=[frontera.loc[max_sharpe_idx, 'port_vols']],
+        y=[frontera.loc[max_sharpe_idx, 'port_rets']],
+        marker=dict(color='RoyalBlue', size=15, symbol='star'),
+        name='Máximo Sharpe'
+    )
 
-# Agregar el portafolio objetivo
-opt_target_vol, opt_target_ret = portfolio_performance(
-    opt_target.x, mean_returns, cov_matrix, risk_aversion_lambda
-)
-fig.add_scatter(
-    mode='markers',
-    x=[opt_target_vol],
-    y=[opt_target_ret],
-    marker=dict(color='green', size=15, symbol='circle'),
-    name='Portafolio Objetivo'
-)
+    # Agregar el portafolio objetivo
+    opt_target_vol, opt_target_ret = portfolio_performance(
+        opt_target.x, mean_returns, cov_matrix, risk_aversion_lambda
+    )
+    fig.add_scatter(
+        mode='markers',
+        x=[opt_target_vol],
+        y=[opt_target_ret],
+        marker=dict(color='green', size=15, symbol='circle'),
+        name='Portafolio Objetivo'
+    )
 
-# Configurar ejes y mostrar la gráfica
-fig.update_xaxes(title="Volatilidad")
-fig.update_yaxes(title="Rendimiento")
-st.plotly_chart(fig)
+    # Configurar ejes y mostrar la gráfica
+    fig.update_xaxes(title="Volatilidad")
+    fig.update_yaxes(title="Rendimiento")
+    st.plotly_chart(fig)
 
 
     #Portafolio de mínima volatilidad con un target
