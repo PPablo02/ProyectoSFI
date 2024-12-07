@@ -289,6 +289,9 @@ def portfolio_performance(weights, mean_returns, cov_matrix, risk_aversion_lambd
     Returns:
     - Retornos anuales y riesgo ajustado anual
     """    
+    weights = np.array(weights)
+    mean_returns = np.array(mean_returns)
+    
     returns = np.sum(weights * mean_returns) * 252  # Asumimos 252 días hábiles
     std_dev = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights))) * np.sqrt(252)
     return std_dev, returns
