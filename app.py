@@ -470,6 +470,8 @@ with tabs[3]:
         return vol
 
     n = len(mean_returns)
+    bounds = tuple((-1, 1) for asset in range(n))  # Asumiendo no permitir posiciones cortas
+
     # Optimizar para minimizar la volatilidad con el rendimiento objetivo
     opt_target = sco.minimize(min_volatility_for_target_return, n * [1. / n,],
                             args=(mean_returns, cov_matrix, target_return),
