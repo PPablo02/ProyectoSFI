@@ -342,7 +342,7 @@ with tabs[0]:
     st.write(""" 
     Este proyecto tiene como objetivo analizar y optimizar un portafolio utilizando ETFs en diferentes clases de activos, tales como renta fija, renta variable, y materias primas. A lo largo del proyecto, se evaluará el rendimiento de estos activos a través de diversas métricas financieras y técnicas de optimización de portafolios, como la optimización de mínima volatilidad y la maximización del Sharpe Ratio. 
     """)
-    st.write("Integrantes: Emmanuel Reyes Hernández / Fuentes Soriano Adrián /Mariana Vigil Villegas/Pablo Pineda Pineda ")
+    st.write("Integrantes: Emmanuel Reyes Hernández \n Fuentes Soriano Adrián \n Mariana Vigil Villegas\n Pablo Pineda Pineda ")
 
 # --- Selección de ETF's ---
 with tabs[1]:
@@ -727,3 +727,6 @@ with tabs[5]:
         st.write(f"{ticker}: {peso:.2%}")
     fig_black_litterman = px.bar(x=list(tickers.keys()), y=pesos_black_litterman, title="Pesos Ajustados - Black-Litterman")
     st.plotly_chart(fig_black_litterman)
+
+
+    st.write("Los pesos ajustados según el Modelo de Black-Litterman reflejan un portafolio optimizado que combina tus views con la distribución a priori de los activos. A continuación, se presenta un análisis detallado de los resultados y su interpretación. \n Pesos del Portafolio Ajustado \n TLT (21.03%) \n El modelo asigna un peso significativo a los bonos de largo plazo, destacando su estabilidad en escenarios de aversión al riesgo. La view moderada (3%) sobre estos activos parece haber incrementado ligeramente su participación en comparación con el benchmark.\n EMB (52.25%) \nLa gran exposición a bonos emergentes se alinea con tu view positiva (6%) hacia este segmento. Esto sugiere que el modelo contempla un escenario favorable para los mercados emergentes, con menores riesgos percibidos y estabilidad en el dólar. SPY (36.20%) El peso asignado a acciones estadounidenses refleja confianza en el crecimiento económico en EE. UU., consistente con tu view optimista (8%). Este resultado señala una preferencia hacia la renta variable en el portafolio. VWO (-18.09%) El peso negativo (corto) asignado a mercados emergentes indica que el modelo percibe un alto nivel de incertidumbre o riesgo en estos activos, a pesar de tu view positiva (11%). Esto puede deberse a inconsistencias entre tus views y las correlaciones históricas o la matriz de covarianza. GLD (8.60%)El modelo asigna una exposición moderada al oro, coherente con tu view de rendimiento estable (4%) como activo refugio. Esto sugiere que el oro es percibido como un diversificador útil dentro del portafolio.")
