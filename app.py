@@ -565,27 +565,6 @@ with tabs[3]:
         {'type': 'eq', 'fun': lambda x: np.sum(x * mean_returns) * 252 - target_return}  # Target return
     )
 
-    n = 5
-    mean_returns = retornos_2010_2020.mean()
-  
-    # 2. Calcular media y covarianza de los rendimientos
-    mean_returns = retornos_2010_2020.mean()
-    cov_matrix = retornos_2010_2020.cov() 
-     
-    target_return = (1+0.10)^(1/252)-1
-
-    bounds = tuple((-1, 1) for asset in range(5))  # Asumiendo no permitir posiciones cortas
-
-    # Optimizar para minimizar la volatilidad con el rendimiento objetivo
-    opt_target = sco.minimize(min_volatility_for_target_return, n * [1. / n,],
-                            args=(mean_returns, cov_matrix, target_return),
-                            method='SLSQP', bounds=bounds, constraints=constraints_target)
-
-
-    # Optimizar para minimizar la volatilidad con el rendimiento objetivo
-    opt_target = sco.minimize(min_volatility_for_target_return, n * [1. / n,],
-                            args=(mean_returns, cov_matrix, target_return),
-                            method='SLSQP', bounds=bounds, constraints=constraints_target) # type: ignore
 
 # --- Backtesting ---
 with tabs[4]:
