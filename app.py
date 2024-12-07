@@ -509,14 +509,14 @@ with tabs[4]:
     sp500 = yf.download("^GSPC", start="2021-01-01", end="2023-01-01")['Adj Close']
     sp_retornos = sp500.pct_change().dropna()
 
-    sp_media_retornos = sp_retornos.mean()*100
-    sp_vol = sp_retornos.std()*100
-    sp_sesgo = skew(sp_retornos)
-    sp_curtosis = kurtosis(sp_retornos)
-    sp_sharpe = sp_media_retornos/sp_vol
-    sortino = sp_media_retornos / sp_retornos[sp_retornos<0].std()
-    sp_var95 = np.percentile(sp_retornos,5)
-    sp_cvar95 = sp_retornos[sp_retornos <= sp_var95].mean()
+    sp_media_retornos = retornos.mean() * 100
+    sp_vol = retornos.std() * 100
+    sp_sesgo = skew(retornos)
+    sp_curtosis = kurtosis(retornos)
+    sp_sharpe = media / volatilidad if volatilidad != 0 else np.nan
+    sortino = media / retornos[retornos < 0].std() if retornos[retornos < 0].std() != 0 else np.nan
+    sp_var95 = np.percentile(retornos, 5)
+    sp_cvar95 = retornos[retornos <= VaR_95].mean()
 
     sp_metricas = [sp_media_retornos,sp_vol,sp_sesgo,sp_curtosis,sp_sharpe,sortino,sp_var95,sp_cvar95]
 
