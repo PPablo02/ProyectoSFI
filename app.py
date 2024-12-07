@@ -552,6 +552,8 @@ with tabs[4]:
 
     # Convertimos la lista de métricas a un array de NumPy
     metricas_final = np.array(metricas_final)
+    
+    sp_metricas = np.array(sp_metricas).reshape(1, -1)  # Convertir a una fila
 
     # Ahora agregamos las métricas del S&P 500
     metricas_final = np.column_stack((metricas_final, np.array(sp_metricas)))
