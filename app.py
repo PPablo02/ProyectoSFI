@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from scipy.optimize import minimize
+import scipy.optimize as sco
 from scipy.stats import skew, kurtosis
 
 # --- Configuración de los ETFs ---
@@ -177,7 +178,8 @@ def graficar_linea(df, x_column, y_column, title, labels=None):
     # Crear el gráfico de línea
     fig = px.line(df, x=x_column, y=y_column, title=title, labels=labels)
     return fig
-
+#Medida de aversión al riesgo.
+risk_aversion_lambda = 1
 # --- Funciones de Optimización de Portafolios ---
 def optimizar_portafolio_markowitz(retornos, metodo="min_vol", objetivo=None):
     # Función para optimizar el portafolio según el modelo de Markowitz
@@ -243,6 +245,40 @@ def black_litterman_optimizar(retornos, P, Q, tau=0.05, metodo="min_vol"):
     
     # Optimización de Markowitz usando la media ajustada
     return optimizar_portafolio_markowitz(retornos, metodo=metodo)
+
+
+
+
+#En esta función obtenemos el rendimiento ajustado por riesgo
+def portfolio_performance(weights, mean_returns, cov_matrix, risk_aversion_lambda):
+    """
+    Obtiene el performance del portafolios
+    
+    Parameters:
+    - weights: pesos de cada ETF en el portafolios
+    - mean_returns media de los retornos, es un vector
+    - cov_matrix: Matriz de covarianzas entre los activos
+
+    
+    Returns:
+    - Retornos anuales y riesgo ajustado anual
+    """    
+    returns = np.sum(weights * mean_returns) * 252  # Asumimos 252 días hábiles
+    std_dev = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights))) * np.sqrt(252)
+    return std_dev, returns
+
+# El target de 10% anual se define en la siguiente variable
+target_return = 0.10
+
+# Función objetivo para minimizar la volatilidad dado un rendimiento objetivo
+def min_volatility_for_target_return(weights, mean_returns, cov_matrix, target_return):
+    vol, ret = portfolio_performance(weights, mean_returns, cov_matrix, risk_aversion_lambda)
+    return vol
+
+#También calculamos constantes útiles a  lo largo del desarrollo del código 
+
+
+
 
 # --- Configuración de Streamlit ---
 st.title("Proyecto de Optimización de Portafolios")
@@ -420,6 +456,24 @@ with tabs[3]:
 
 
 
+    #Portafolio de mínima volatilidad con un target
+    # Calcular media y covarianza de los rendimientos
+    log_ret = np.log(datos_2010_2020 / datos_2010_2020.shift(1)).dropna()
+    mean_returns = log_ret.mean()
+    cov_matrix = log_ret.cov()
+
+    # Restricciones para la optimización
+    constraints_target = (
+        {'type': 'eq', 'fun': lambda x: np.sum(x) - 1},  # Sum of weights is 1
+        {'type': 'eq', 'fun': lambda x: np.sum(x * mean_returns) * 252 - target_return}  # Target return
+    )
+
+
+    # Optimizar para minimizar la volatilidad con el rendimiento objetivo
+    opt_target = sco.minimize(min_volatility_for_target_return, n * [1. / n,],
+                            args=(mean_returns, cov_matrix, target_return),
+                            method='SLSQP', bounds=bounds, constraints=constraints_target) # type: ignore
+
 # --- Backtesting ---
 with tabs[4]:
     st.header("Backtesting (2021-2023)")
@@ -444,6 +498,21 @@ with tabs[4]:
     #Extraemos los rendimientos
     #   Lista de portafolios y sus respectivos pesos
     # Lista de portafolios y sus respectivos pesos
+
+    #También incluimos la comparación con el SP500
+    sp500 = cargar_datos(['^GSPC'], "2010-01-01", "2023-01-01")
+    sp_retornos = sp500["Retornos"]
+
+    sp_media_retornos = sp_retornos.mean()*100
+    sp_vol = sp_retornos.std()*100
+    sp_sesgo = skew(sp_retornos)
+    sp_curtosis = kurtosis(sp_retornos)
+    sp_sharpe = sp_media_retornos/sp_vol
+    sortino = sp_media_retornos / sp_retornos[sp_retornos<0].std()
+    sp_var95 = np.percentile(sp_retornos,5)
+    sp_cvar95 = sp_retornos[sp_retornos <= sp_var95].mean()
+
+    sp_metricas = [sp_media_retornos,sp_vol,sp_sesgo,sp_curtosis,sp_sharpe,sortino,sp_var95,sp_cvar95]
 
     portafolios = [
         ("Mínima Volatilidad", pesos_min_vol),
@@ -470,7 +539,7 @@ with tabs[4]:
         # Guardamos las métricas en un DataFrame
         metricas = [media, volatilidad, sesgo, curtosis, sharpe, sortino, VaR_95, CVaR_95]
         metricas_final = np.column_stack((metricas_final, metricas))
-
+    metricas_final = np.column_stack((metricas_final, sp_metricas))
 
     metricas_final = metricas_final[:,1:]
     # Mostrar las métricas combinadas
