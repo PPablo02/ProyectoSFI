@@ -550,25 +550,34 @@ with tabs[3]:
     st.plotly_chart(fig)
 
 
-    #Portafolio de mínima volatilidad con un target
-    # Calcular media y covarianza de los rendimientos
 
-    log_ret = np.log(retornos_2010_2020).dropna()
-    mean_returns = log_ret.mean()
-    cov_matrix = log_ret.cov()
+    # Definir el rendimiento objetivo anualizado
+    target_return = 0.18  # 18%
+
+    # Función objetivo para minimizar la volatilidad dado un rendimiento objetivo
+    def min_volatility_for_target_return(weights, mean_returns, cov_matrix, target_return):
+        vol, ret = portfolio_performance(weights, mean_returns, cov_matrix, risk_aversion_lambda)
+        return vol
 
     # Restricciones para la optimización
     constraints_target = (
         {'type': 'eq', 'fun': lambda x: np.sum(x) - 1},  # Sum of weights is 1
         {'type': 'eq', 'fun': lambda x: np.sum(x * mean_returns) * 252 - target_return}  # Target return
     )
-    # Función objetivo para minimizar la volatilidad dado un rendimiento objetivo
-    def min_volatility_for_target_return(weights, mean_returns, cov_matrix, target_return):
-        vol, ret = portfolio_performance(weights, mean_returns, cov_matrix, risk_aversion_lambda)
-        return vol
 
-    n = len(mean_returns)
-    bounds = tuple((-1, 1) for asset in range(n))  # Asumiendo no permitir posiciones cortas
+    n = 5
+    mean_returns = retornos_2010_2020.mean()
+  
+    # 2. Calcular media y covarianza de los rendimientos
+    mean_returns = retornos_2010_2020.mean()
+    cov_matrix = retornos_2010_2020.cov()    
+    bounds = tuple((-1, 1) for asset in range(5))  # Asumiendo no permitir posiciones cortas
+
+    # Optimizar para minimizar la volatilidad con el rendimiento objetivo
+    opt_target = sco.minimize(min_volatility_for_target_return, n * [1. / n,],
+                            args=(mean_returns, cov_matrix, target_return),
+                            method='SLSQP', bounds=bounds, constraints=constraints_target)
+
 
     # Optimizar para minimizar la volatilidad con el rendimiento objetivo
     opt_target = sco.minimize(min_volatility_for_target_return, n * [1. / n,],
