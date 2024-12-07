@@ -14,27 +14,35 @@ tickers = {
     "TLT": {
         "nombre": "iShares 20+ Year Treasury Bond ETF",
         "descripcion": "Este ETF sigue el índice ICE U.S. Treasury 20+ Year Bond Index, compuesto por bonos del gobierno de EE. UU. con vencimientos superiores a 20 años.",
+        "indice": "ICE U.S. Treasury 20+ Year Bond Index",
         "sector": "Renta fija",
         "categoria": "Bonos del Tesoro de EE. UU.",
         "exposicion": "Bonos del gobierno de EE. UU. a largo plazo.",
+        "exposicion_ganada": "Exposición a bonos de largo plazo altamente líquidos respaldados por el gobierno estadounidense.",
+        "pais_inversion": ["Estados Unidos"],
         "moneda": "USD",
         "beta": 0.2,
+        "duracion": "Larga",
         "top_holdings": [
             {"symbol": "US Treasury", "holdingPercent": "100%"}
         ],
         "gastos": "0.15%",
         "rango_1y": "120-155 USD",
         "rendimiento_ytd": "5%",
-        "duracion": "Larga"
+        "estilo": "Grado de inversión",
     },
     "EMB": {
         "nombre": "iShares JP Morgan USD Emerging Markets Bond ETF",
         "descripcion": "Este ETF sigue el índice J.P. Morgan EMBI Global Diversified Index, que rastrea bonos soberanos de mercados emergentes en dólares estadounidenses.",
+        "indice": "J.P. Morgan EMBI Global Diversified Index",
         "sector": "Renta fija",
         "categoria": "Bonos emergentes",
         "exposicion": "Bonos soberanos de mercados emergentes denominados en USD.",
+        "exposicion_ganada": "Acceso a bonos soberanos diversificados de mercados emergentes.",
+        "pais_inversion": ["Brasil", "México", "Rusia", "Otros mercados emergentes"],
         "moneda": "USD",
         "beta": 0.6,
+        "duracion": "Media",
         "top_holdings": [
             {"symbol": "Brazil 10Yr Bond", "holdingPercent": "10%"},
             {"symbol": "Mexico 10Yr Bond", "holdingPercent": "9%"},
@@ -43,11 +51,12 @@ tickers = {
         "gastos": "0.39%",
         "rango_1y": "85-105 USD",
         "rendimiento_ytd": "8%",
-        "duracion": "Media"
+        "estilo": "Riesgo moderado, rendimiento potencial",
     },
     "SPY": {
         "nombre": "SPDR S&P 500 ETF Trust",
         "descripcion": "Este ETF sigue el índice S&P 500, compuesto por las 500 principales empresas de EE. UU.",
+        "indice": "S&P 500 Index",
         "sector": "Renta variable",
         "categoria": "Acciones grandes de EE. UU.",
         "exposicion": "Acciones de las 500 empresas más grandes de EE. UU.",
@@ -99,7 +108,55 @@ tickers = {
     }
 }
 
-# --- Funciones Auxiliares ---
+# --- Función para cargar datos ---
+def cargar_datos(tickers, inicio, fin):
+    datos = {}
+    for ticker in tickers:
+        df = yf.download(ticker, start=inicio, end=fin)
+        df['Retornos'] = df['Close'].pct_change()
+        datos[ticker] = df
+    return datos
+
+# --- Configuración de Streamlit ---
+st.title("Análisis de ETFs")
+
+# --- Visualización de ETFs ---
+st.header("Características de los ETFs")
+etf_caracteristicas = pd.DataFrame({
+    "Ticker": list(tickers.keys()),
+    "Nombre": [info.get("nombre", "No especificado") for info in tickers.values()],
+    "Índice": [info.get("indice", "No especificado") for info in tickers.values()],
+    "Exposición Ganada": [info.get("exposicion_ganada", "No especificado") for info in tickers.values()],
+    "Países de Inversión": [", ".join(info.get("pais_inversion", ["No especificado"])) for info in tickers.values()],
+    "Moneda": [info.get("moneda", "No especificado") for info in tickers.values()],
+    "Estilo": [info.get("estilo", "No especificado") for info in tickers.values()],
+    "Gastos (%)": [info.get("gastos", "No especificado") for info in tickers.values()],
+    "Duración": [info.get("duracion", "No especificado") for info in tickers.values()],
+    "Beta": [info.get("beta", "No especificado") for info in tickers.values()],
+    "Rendimiento YTD (%)": [info.get("rendimiento_ytd", "No especificado") for info in tickers.values()],
+})
+
+st.dataframe(etf_caracteristicas)
+
+# --- Detalle individual de ETFs ---
+st.header("Detalle Individual de ETFs")
+for ticker, info in tickers.items():
+    st.subheader(f"{info.get('nombre', 'No especificado')} ({ticker})")
+    st.write(f"Descripción: {info.get('descripcion', 'No especificado')}")
+    st.write(f"Índice que sigue: {info.get('indice', 'No especificado')}")
+    st.write(f"Exposición: {info.get('exposicion', 'No especificado')}")
+    st.write(f"Exposición ganada: {info.get('exposicion_ganada', 'No especificado')}")
+    st.write(f"Principales contribuyentes: {', '.join([f'{h.get('symbol', 'No especificado')} ({h.get('holdingPercent', 'No especificado')})' for h in info.get('top_holdings', [])])}")
+    st.write(f"Países donde invierte: {', '.join(info.get('pais_inversion', ['No especificado']))}")
+    st.write(f"Duración: {info.get('duracion', 'No especificado')}")
+    st.write(f"Estilo: {info.get('estilo', 'No especificado')}")
+    st.write(f"Gastos: {info.get('gastos', 'No especificado')}")
+    st.write(f"Moneda de denominación: {info.get('moneda', 'No especificado')}")
+    st.write(f"Beta: {info.get('beta', 'No especificado')}")
+    st.write(f"Rango en el último año: {info.get('rango_1y', 'No especificado')}")
+    st.write(f"Rendimiento YTD: {info.get('rendimiento_ytd', 'No especificado')}")
+    
+    # --- Funciones Auxiliares ---
 def cargar_datos(tickers, inicio, fin):
     """Descarga datos históricos para una lista de tickers desde Yahoo Finance."""
     datos = {}
@@ -274,7 +331,35 @@ target_return = 0.10
 
 #También calculamos constantes útiles a  lo largo del desarrollo del código 
 
-
+def calcular_frontera_eficiente(retornos, num_puntos=100):
+    """
+    Calcula la frontera eficiente generando múltiples portafolios aleatorios.
+    """
+    medias = retornos.mean()
+    covarianza = retornos.cov()
+    n_activos = len(medias)
+    resultados = {
+        "port_rets": [],
+        "port_vols": [],
+        "sharpe_ratio": [],
+        "weights": []
+    }
+    
+    # Generar portafolios aleatorios
+    for _ in range(num_puntos):
+        pesos = np.random.random(n_activos)
+        pesos /= np.sum(pesos)
+        
+        rendimiento = np.dot(pesos, medias)
+        riesgo = np.sqrt(np.dot(pesos.T, np.dot(covarianza, pesos)))
+        sharpe = rendimiento / riesgo if riesgo != 0 else 0
+        
+        resultados["port_rets"].append(rendimiento)
+        resultados["port_vols"].append(riesgo)
+        resultados["sharpe_ratio"].append(sharpe)
+        resultados["weights"].append(pesos)
+    
+    return pd.DataFrame(resultados)
 
 
 # --- Configuración de Streamlit ---
@@ -323,6 +408,8 @@ with tabs[1]:
                       y=datos_2010_hoy[ticker]['Close'].values.flatten(),
                       title=f"Precio de Cierre - {ticker}")
         st.plotly_chart(fig)
+        
+        
 
 # --- Estadísticas de los ETF's ---
 with tabs[2]:
@@ -451,6 +538,42 @@ with tabs[3]:
     fig_sharpe = px.bar(x=list(tickers.keys()), y=pesos_sharpe, title="Pesos - Máximo Sharpe Ratio")
     st.plotly_chart(fig_sharpe)
 
+# Calcular la frontera eficiente
+frontera = calcular_frontera_eficiente(retornos_2010_2020)
+
+# --- Graficar la Frontera Eficiente ---
+fig = px.scatter(
+    frontera, x='port_vols', y='port_rets', color='sharpe_ratio',
+    labels={'port_vols': 'Volatilidad Esperada', 'port_rets': 'Rendimiento Esperado', 'sharpe_ratio': 'Sharpe Ratio'},
+    title="Frontera Eficiente Simulada"
+).update_traces(mode='markers', marker=dict(symbol='cross'))
+
+# Agregar el portafolio de máximo Sharpe Ratio
+max_sharpe_idx = frontera['sharpe_ratio'].idxmax()
+fig.add_scatter(
+    mode='markers',
+    x=[frontera.loc[max_sharpe_idx, 'port_vols']],
+    y=[frontera.loc[max_sharpe_idx, 'port_rets']],
+    marker=dict(color='RoyalBlue', size=15, symbol='star'),
+    name='Máximo Sharpe'
+)
+
+# Agregar el portafolio objetivo
+opt_target_vol, opt_target_ret = portfolio_performance(
+    opt_target.x, mean_returns, cov_matrix, risk_aversion_lambda
+)
+fig.add_scatter(
+    mode='markers',
+    x=[opt_target_vol],
+    y=[opt_target_ret],
+    marker=dict(color='green', size=15, symbol='circle'),
+    name='Portafolio Objetivo'
+)
+
+# Configurar ejes y mostrar la gráfica
+fig.update_xaxes(title="Volatilidad")
+fig.update_yaxes(title="Rendimiento")
+st.plotly_chart(fig)
 
 
     #Portafolio de mínima volatilidad con un target
