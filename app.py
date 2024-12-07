@@ -552,7 +552,7 @@ with tabs[3]:
 
 
     # Definir el rendimiento objetivo anualizado
-    target_return = 0.18  # 18%
+
 
     # Función objetivo para minimizar la volatilidad dado un rendimiento objetivo
     def min_volatility_for_target_return(weights, mean_returns, cov_matrix, target_return):
@@ -570,7 +570,10 @@ with tabs[3]:
   
     # 2. Calcular media y covarianza de los rendimientos
     mean_returns = retornos_2010_2020.mean()
-    cov_matrix = retornos_2010_2020.cov()    
+    cov_matrix = retornos_2010_2020.cov() 
+     
+    target_return = (1+0.10)^(1/252)-1
+
     bounds = tuple((-1, 1) for asset in range(5))  # Asumiendo no permitir posiciones cortas
 
     # Optimizar para minimizar la volatilidad con el rendimiento objetivo
