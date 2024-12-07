@@ -503,7 +503,7 @@ with tabs[4]:
     # Lista de portafolios y sus respectivos pesos
 
     #También incluimos la comparación con el SP500
-    sp500 = cargar_datos(['^GSPC'], "2010-01-01", "2023-01-01")
+    sp500 = cargar_datos(list(["^GSPC"]), "2010-01-01", "2023-01-01")
     sp_retornos = sp500["Retornos"]
 
     sp_media_retornos = sp_retornos.mean()*100
