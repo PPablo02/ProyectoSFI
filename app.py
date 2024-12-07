@@ -458,8 +458,8 @@ with tabs[3]:
 
     #Portafolio de mínima volatilidad con un target
     # Calcular media y covarianza de los rendimientos
-    datos_2010_2020 = datos_2010_2020.dropna()
-    log_ret = np.log(datos_2010_2020 / datos_2010_2020.shift(1)).dropna()
+
+    log_ret = np.log(retornos_2010_2020).dropna()
     mean_returns = log_ret.mean()
     cov_matrix = log_ret.cov()
 
