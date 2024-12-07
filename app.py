@@ -138,23 +138,7 @@ etf_caracteristicas = pd.DataFrame({
 
 st.dataframe(etf_caracteristicas)
 
-# --- Detalle individual de ETFs ---
-st.header("Detalle Individual de ETFs")
-for ticker, info in tickers.items():
-    st.subheader(f"{info.get('nombre', 'No especificado')} ({ticker})")
-    st.write(f"Descripción: {info.get('descripcion', 'No especificado')}")
-    st.write(f"Índice que sigue: {info.get('indice', 'No especificado')}")
-    st.write(f"Exposición: {info.get('exposicion', 'No especificado')}")
-    st.write(f"Exposición ganada: {info.get('exposicion_ganada', 'No especificado')}")
-    st.write(f"Principales contribuyentes: {', '.join([f'{h.get('symbol', 'No especificado')} ({h.get('holdingPercent', 'No especificado')})' for h in info.get('top_holdings', [])])}")
-    st.write(f"Países donde invierte: {', '.join(info.get('pais_inversion', ['No especificado']))}")
-    st.write(f"Duración: {info.get('duracion', 'No especificado')}")
-    st.write(f"Estilo: {info.get('estilo', 'No especificado')}")
-    st.write(f"Gastos: {info.get('gastos', 'No especificado')}")
-    st.write(f"Moneda de denominación: {info.get('moneda', 'No especificado')}")
-    st.write(f"Beta: {info.get('beta', 'No especificado')}")
-    st.write(f"Rango en el último año: {info.get('rango_1y', 'No especificado')}")
-    st.write(f"Rendimiento YTD: {info.get('rendimiento_ytd', 'No especificado')}")
+
     
     # --- Funciones Auxiliares ---
 def cargar_datos(tickers, inicio, fin):
@@ -395,7 +379,23 @@ with tabs[1]:
         "Rendimiento YTD": [info["rendimiento_ytd"] for info in tickers.values()],
         "Duración": [info["duracion"] for info in tickers.values()],
     })
-
+    # --- Detalle individual de ETFs ---
+    st.header("Detalle Individual de ETFs")
+    for ticker, info in tickers.items():
+        st.subheader(f"{info.get('nombre', 'No especificado')} ({ticker})")
+        st.write(f"Descripción: {info.get('descripcion', 'No especificado')}")
+        st.write(f"Índice que sigue: {info.get('indice', 'No especificado')}")
+        st.write(f"Exposición: {info.get('exposicion', 'No especificado')}")
+        st.write(f"Exposición ganada: {info.get('exposicion_ganada', 'No especificado')}")
+        st.write(f"Principales contribuyentes: {', '.join([f'{h.get('symbol', 'No especificado')} ({h.get('holdingPercent', 'No especificado')})' for h in info.get('top_holdings', [])])}")
+        st.write(f"Países donde invierte: {', '.join(info.get('pais_inversion', ['No especificado']))}")
+        st.write(f"Duración: {info.get('duracion', 'No especificado')}")
+        st.write(f"Estilo: {info.get('estilo', 'No especificado')}")
+        st.write(f"Gastos: {info.get('gastos', 'No especificado')}")
+        st.write(f"Moneda de denominación: {info.get('moneda', 'No especificado')}")
+        st.write(f"Beta: {info.get('beta', 'No especificado')}")
+        st.write(f"Rango en el último año: {info.get('rango_1y', 'No especificado')}")
+        st.write(f"Rendimiento YTD: {info.get('rendimiento_ytd', 'No especificado')}")
     # Mostrar las características en Streamlit
     st.subheader("Características de los ETFs Seleccionados")
     st.dataframe(etf_caracteristicas)
