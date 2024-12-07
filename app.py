@@ -122,8 +122,6 @@ st.title("Análisis de ETFs")
 
 
 
-st.dataframe(etf_caracteristicas)
-
 
     
     # --- Funciones Auxiliares ---
@@ -367,6 +365,7 @@ with tabs[1]:
         "Rendimiento YTD": [info["rendimiento_ytd"] for info in tickers.values()],
         "Duración": [info["duracion"] for info in tickers.values()],
     })
+
     # --- Detalle individual de ETFs ---
     st.header("Detalle Individual de ETFs")
     for ticker, info in tickers.items():
