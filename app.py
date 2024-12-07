@@ -568,7 +568,7 @@ with tabs[3]:
     
     # Agregar el portafolio objetivo
     opt_target_vol, opt_target_ret = portfolio_performance(
-        opt_target.x, mean_returns, cov_matrix, risk_aversion_lambda
+        opt_target, mean_returns, cov_matrix, risk_aversion_lambda
     )
 
 
