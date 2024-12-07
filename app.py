@@ -602,7 +602,7 @@ with tabs[4]:
             x=sp_retornos_cumsum.index, 
             y=sp_retornos_cumsum.values.flatten(), 
             mode='lines',  # Mantiene la línea en vez de dispersión
-            name='Retornos Acumulados SP500', 
+            name='S&P 500', 
             line=dict(color='red', dash='solid')  # Línea roja continua
         )
     )
