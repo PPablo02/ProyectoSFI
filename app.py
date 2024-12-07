@@ -578,21 +578,36 @@ with tabs[4]:
         st.write(f"Rendimientos Acumulados - {nombre}")
         st.line_chart(rendimientos.cumsum())
 
+    st.write("Rendimientos Acumulados S&P 500")
+    st.line_chart(sp_retornos.cumsum())
 
 
-
-
-
+    sp_retornos_cumsum = sp_retornos.cumsum()
 
 
 
 
         # Graficar todos los portafolios en una sola gráfica
+    # Crear el gráfico de los rendimientos acumulados de los portafolios
     fig_rendimientos = px.line(
         rendimientos_acumulados,
         title="Rendimientos Acumulados - Comparación de Portafolios",
         labels={"value": "Rendimientos Acumulados", "index": "Fecha"}
     )
+
+    # Agregar la línea de los rendimientos acumulados de SP500
+    fig_rendimientos.add_trace(
+        go.Scatter(
+            x=sp_retornos_cumsum.index, 
+            y=sp_retornos_cumsum.values.flatten(), 
+            mode='lines',  # Mantiene la línea en vez de dispersión
+            name='Retornos Acumulados SP500', 
+            line=dict(color='red', dash='solid')  # Línea roja continua
+        )
+    )
+
+    
+
     st.plotly_chart(fig_rendimientos)
 
 
